@@ -55,13 +55,21 @@ COPY --from=builder /app /app
 RUN useradd --create-home --shell /bin/bash appuser && \
     chown -R appuser:appuser /app
 
+# Copy and make the entrypoint script executable
+COPY --chown=appuser:appuser entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 USER appuser
 
 # Expose the port the app runs on
 EXPOSE 8000
 
-# Default command to run the application
-# Use the project.scripts defined in pyproject.toml if available
-# Or define explicitly:
-# Use the script defined in pyproject.toml under [project.scripts]
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Set the entrypoint script
+ENTRYPOINT ["/app/entrypoint.sh"]
+
+# Default to starting the API server, can be overridden with:
+# docker run -it --rm image worker
+# for Celery worker or:
+# docker run -it --rm image api
+# for FastAPI server
+CMD ["api"]
