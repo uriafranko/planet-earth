@@ -9,7 +9,7 @@ import {
 import { getCurrentUser } from './auth';
 
 // Base URL for the API
-const API_BASE_URL = 'http://127.0.0.1:8000'; // Updated to localhost:8000
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'; // Fallback to localhost if env var not set
 
 // HTTP methods
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';

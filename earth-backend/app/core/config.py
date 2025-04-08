@@ -37,8 +37,7 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str = ""
     REDIS_PORT: int = 6379
     REDIS_DB: int = 0
-    RQ_REDIS_URL: str = "redis://redis:6379/0"
-    RQ_QUEUE_NAME: str = "default"
+    REDIS_URL: str = "redis://redis:6379/0"
 
     # Qdrant (Vector DB)
     QDRANT_URL: str = ""
@@ -69,7 +68,7 @@ class Settings(BaseSettings):
     @property
     def redis_url(self) -> str:
         return (
-            self.RQ_REDIS_URL
+            self.REDIS_URL
             or f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
         )
 

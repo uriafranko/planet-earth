@@ -63,6 +63,5 @@ EXPOSE 8000
 # Default command to run the application
 # Use the project.scripts defined in pyproject.toml if available
 # Or define explicitly:
-# CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 # Use the script defined in pyproject.toml under [project.scripts]
-CMD ["start"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
