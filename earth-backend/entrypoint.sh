@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-# Default to "api" if no argument is provided
-SERVICE_TYPE=${1:-api}
+# Use environment variable SERVICE_TYPE with "api" as default
+SERVICE_TYPE=${SERVICE_TYPE:-api}
 
 echo "Starting service: $SERVICE_TYPE"
 

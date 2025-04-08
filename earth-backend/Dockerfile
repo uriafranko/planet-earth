@@ -64,12 +64,8 @@ USER appuser
 # Expose the port the app runs on
 EXPOSE 8000
 
+# Set default service type (can be overridden with -e SERVICE_TYPE=worker)
+ENV SERVICE_TYPE=api
+
 # Set the entrypoint script
 ENTRYPOINT ["/app/entrypoint.sh"]
-
-# Default to starting the API server, can be overridden with:
-# docker run -it --rm image worker
-# for Celery worker or:
-# docker run -it --rm image api
-# for FastAPI server
-CMD ["api"]
