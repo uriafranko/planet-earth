@@ -9,26 +9,21 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=on
 ENV POETRY_NO_INTERACTION=1
 ENV PATH="/root/.local/bin:${PATH}"
 
-# Install uv
-RUN apt-get update && apt-get install -y curl && \
+# Install uv and required system dependencies
+RUN apt-get update && apt-get install -y curl gcc g++ libc6-dev && \
     curl -LsSf https://astral.sh/uv/install.sh | bash
 
 # Set the working directory in the container
 WORKDIR /app
 
-# Install build dependencies first (needed for some packages)
+# Copy project files
 COPY pyproject.toml .
-# Use uv pip install to leverage the resolver and installer but only for deps
-# This creates a virtual environment in /app/.venv managed by uv
+
+# Create a virtual environment and install dependencies
 RUN uv venv --python 3.11 .venv && \
     . .venv/bin/activate && \
-    uv pip install --system --no-deps "hatchling"
-
-# Install project dependencies
-# We copy only pyproject.toml first to leverage Docker layer caching
-RUN bash -c 'uv pip install --no-cache -r <(uv pip freeze --exclude-editable | grep -v "^planet-earth==")'
-# If using torch and needing a specific CUDA version, adjust here
-# Example: uv pip install torch==2.1.0+cu118 torchvision==0.16.0+cu118 --extra-index-url https://download.pytorch.org/whl/cu118
+    uv pip install --no-deps "hatchling" && \
+    uv pip install -r pyproject.toml
 
 # Create a non-root user
 RUN useradd --create-home --shell /bin/bash appuser
