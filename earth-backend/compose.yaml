@@ -1,0 +1,88 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: planet_earth_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      POSTGRES_DB: ${POSTGRES_DB:-planet_earth_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-planet_earth_db}"]
+        interval: 5s
+        timeout: 5s
+        retries: 5
+    networks:
+      - earth_net
+
+  redis:
+    image: redis:7
+    container_name: planet_earth_redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - earth_net
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: planet_earth_api
+    env_file:
+      - .env
+    # Pass specific env vars if needed, overriding .env
+    # environment:
+    #   - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER}... # Example override
+    volumes:
+      - .:/app # Mount code for hot-reloading in dev (use depends_on for prod)
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Command for development with hot-reload:
+    command: ["start-dev"]
+    # Command for production (use CMD in Dockerfile or override here):
+    # command: ["start"]
+    networks:
+      - earth_net
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: planet_earth_worker
+    env_file:
+      - .env
+    volumes:
+      - .:/app # Mount code for development
+    depends_on:
+      api: # Worker might depend on API settings or initial setup
+        condition: service_started # Or service_healthy if API has healthcheck
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    # Command defined in pyproject.toml [project.scripts]
+    command: ["worker"]
+    restart: unless-stopped
+    networks:
+      - earth_net
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  earth_net:
+    driver: bridge
