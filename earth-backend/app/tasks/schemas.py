@@ -191,7 +191,6 @@ def process_endpoints(
         parser: OpenAPIParser instance for generating embedding texts
     """
     # Initialize the embedder and vector store
-    embedder = get_embedder()
     vector_store = get_vector_store()
 
     # Fetch existing endpoints for this schema to avoid duplicates
@@ -250,7 +249,7 @@ def update_existing_endpoint(
         session.add(endpoint)
         session.commit()
 
-        embedding = get_embedder().embed_endpoint(schema_title, endpoint_data)
+        embedding = get_embedder().embed_endpoint(schema_title, endpoint)
         # Update vector store
         vector_store.update(
             vector_id=str(endpoint.id),
@@ -291,7 +290,7 @@ def create_new_endpoint(
     session.add(endpoint)
     session.commit()
 
-    embedding = get_embedder().embed_endpoint(schema_title, endpoint_data)
+    embedding = get_embedder().embed_endpoint(schema_title, endpoint)
     # Add to vector store
     vector_store.add(
         vector_id=str(endpoint.id),
