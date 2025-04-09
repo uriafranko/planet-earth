@@ -10,7 +10,7 @@ ENV POETRY_NO_INTERACTION=1
 ENV PATH="/root/.local/bin:${PATH}"
 
 # Install uv and required system dependencies
-RUN apt-get update && apt-get install -y curl gcc g++ libc6-dev && \
+RUN apt-get update && apt-get install -y curl gcc g++ libpq-dev libc6-dev && \
     curl -LsSf https://astral.sh/uv/install.sh | bash
 
 # Set the working directory in the container
@@ -49,6 +49,8 @@ COPY --from=builder /app /app
 # Create the appuser in the final stage
 RUN useradd --create-home --shell /bin/bash appuser && \
     chown -R appuser:appuser /app
+
+RUN apt-get update && apt-get install -y libpq5
 
 # Copy and make the entrypoint script executable
 COPY --chown=appuser:appuser entrypoint.sh /app/entrypoint.sh
