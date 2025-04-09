@@ -1,0 +1,20 @@
+{
+  "name": "planet-earth",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.4.2",
+    "@modelcontextprotocol/sdk": "^1.9.0",
+    "@qdrant/js-client-rest": "^1.13.0",
+    "@types/express": "^5.0.1",
+    "express": "^5.1.0",
+    "zod": "^3.24.2"
+  }
+}
