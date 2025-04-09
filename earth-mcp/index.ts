@@ -21,8 +21,9 @@ env.cacheDir = CACHE_DIR;
 
 // Create the MCP server instance
 const server = new McpServer({
-  name: 'Search Any API scheme.',
-  version: '1.0.0',
+  name: 'Search Any API endpoint specification.',
+  version: '0.0.1',
+  description: 'Search For Any API service endpoint for documentation.',
 });
 
 // Configure Qdrant client
@@ -59,13 +60,13 @@ async function initializeEmbeddingModel() {
 
 // Add the semantic search tool
 server.tool(
-  'find_api_scheme',
-  'Find any API scheme by service name and description.',
+  'find_api_spec',
+  'Find any API endpoint documentation by service name and description.',
   {
     query: z
       .string()
       .describe(
-        'Search query for API scheme - e.g. "Slack - Search messages in channels" or "GitHub - Create repository by name"'
+        'Search query for API endpoint documentation - e.g. "Slack - Search messages in channels" or "GitHub - Create repository by name"'
       ),
     limit: z
       .number()
@@ -85,6 +86,7 @@ server.tool(
         vector: vector,
         limit: limit,
         with_payload: true,
+        score_threshold: 0.5,
       });
 
       return {
