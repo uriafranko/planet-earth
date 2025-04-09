@@ -135,3 +135,5 @@ Thumbs.db
 # Build directory
 build/
 dist/
+
+.cache/

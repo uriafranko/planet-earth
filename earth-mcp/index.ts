@@ -3,7 +3,21 @@ import { QdrantClient } from '@qdrant/js-client-rest';
 import { z } from 'zod';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import express, { type Request, type Response } from 'express';
-import { pipeline } from '@huggingface/transformers';
+import { pipeline, env } from '@huggingface/transformers';
+import path from 'path';
+import fs from 'fs';
+
+// Configure Hugging Face to cache models locally
+const MODEL_ID = 'sentence-transformers/all-MiniLM-L6-v2';
+const CACHE_DIR = path.join(process.cwd(), '.cache', 'huggingface');
+
+// Ensure cache directory exists
+if (!fs.existsSync(CACHE_DIR)) {
+  fs.mkdirSync(CACHE_DIR, { recursive: true });
+}
+
+// Set the cache directory for Hugging Face
+env.cacheDir = CACHE_DIR;
 
 // Create the MCP server instance
 const server = new McpServer({
@@ -19,6 +33,29 @@ const qdrantClient = new QdrantClient({
 
 // Define the collection name for Qdrant
 const COLLECTION_NAME = process.env.QDRANT_COLLECTION || 'my_collection';
+
+// Declare the model variable globally
+let embeddingModel: any = null;
+
+// Initialize the embedding model at startup
+async function initializeEmbeddingModel() {
+  console.log('Initializing embedding model...');
+  try {
+    embeddingModel = await pipeline('feature-extraction', MODEL_ID, {
+      dtype: 'fp32',
+      revision: 'main',
+      cache_dir: CACHE_DIR,
+    });
+    console.log('Embedding model loaded successfully');
+  } catch (error) {
+    console.error('Error loading embedding model:', error);
+    if (error instanceof Error) {
+      console.error(error.message);
+      console.error(error.stack);
+    }
+    process.exit(1); // Exit if we can't load the model as it's critical
+  }
+}
 
 // Add the semantic search tool
 server.tool(
@@ -89,13 +126,13 @@ async function getEmbedding(text: string): Promise<number[]> {
   console.log(`Generating embedding for: ${text}`);
 
   try {
-    // Initialize the feature-extraction pipeline with all-MiniLM-L6-v2 model
-    const model = await pipeline('feature-extraction', 'sentence-transformers/all-MiniLM-L6-v2', {
-      dtype: 'fp32', // Explicitly specify dtype to fix warning
-    });
+    // Use the pre-loaded model instead of initializing it each time
+    if (!embeddingModel) {
+      throw new Error('Embedding model not initialized');
+    }
 
     // Get the embedding
-    const result = await model(text, {
+    const result = await embeddingModel(text, {
       pooling: 'mean',
       normalize: true,
     });
@@ -148,7 +185,10 @@ app.post('/messages', async (req: Request, res: Response) => {
 });
 
 // Start the Express server
-app.listen(port, host, () => {
+app.listen(port, host, async () => {
+  // Initialize the embedding model before accepting requests
+  await initializeEmbeddingModel();
+
   console.log(`MCP server is running at http://${host}:${port}`);
   console.log(`Connect to the SSE endpoint at http://${host}:${port}/sse`);
 });
