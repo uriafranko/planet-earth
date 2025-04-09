@@ -76,7 +76,7 @@ dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
     "httpx>=0.26.0",     # For testing FastAPI async client
-    "ruff>=0.2.0",
+    "ruff>=0.11.2",
     "pre-commit>=3.6.0",
     "types-redis",
     "types-requests",
