@@ -23,9 +23,13 @@ const COLLECTION_NAME = process.env.QDRANT_COLLECTION || 'my_collection';
 // Add the semantic search tool
 server.tool(
   'find_api_scheme',
-  'Find any API scheme by intent and service name.',
+  'Find any API scheme by service name and description.',
   {
-    query: z.string().describe('Search query for API scheme - e.g. "Slack - Search messages"'),
+    query: z
+      .string()
+      .describe(
+        'Search query for API scheme - e.g. "Slack - Search messages in channels" or "GitHub - Create repository by name"'
+      ),
     limit: z
       .number()
       .min(1)
@@ -54,7 +58,6 @@ server.tool(
               {
                 status: 'success',
                 results: searchResults.map((result) => ({
-                  id: result.id,
                   score: result.score,
                   payload: result.payload,
                 })),
