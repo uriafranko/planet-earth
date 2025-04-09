@@ -57,6 +57,17 @@ class Endpoint(BaseModel, table=True):
         arbitrary_types_allowed=True,
     )
 
+    @property
+    def vector_data(self) -> dict[str, Any]:
+        return {
+            "schema_id": str(self.schema_id),
+            "path": self.path,
+            "method": self.method,
+            "summary": self.summary,
+            "description": self.description,
+            "tags": self.tags,
+            "spec": self.spec,
+        }
 
 class EndpointRead(BaseModel):
     """Endpoint read model (pydantic)."""

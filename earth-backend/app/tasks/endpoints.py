@@ -62,38 +62,14 @@ def reindex_endpoint(self, endpoint_id: str) -> dict:
                 logger.error(error_message)
                 raise ValueError(error_message)
 
-            # Create endpoint data dictionary for embedding
-            endpoint_data = {
-                "path": endpoint.path,
-                "method": endpoint.method,
-                "operation_id": endpoint.operation_id,
-                "summary": endpoint.summary,
-                "description": endpoint.description,
-                "tags": json.loads(endpoint.tags) if endpoint.tags else [],
-                "hash": endpoint.hash,
-                "spec": endpoint.spec,
-            }
-
             # Generate embedding
-            text = f"{schema.title} {endpoint_data['path']} {endpoint_data['summary'] or endpoint_data['description']} {', '.join(endpoint_data['tags'])}"
-            embedding = embedder.embed_text(text)
+            embedding = embedder.embed_endpoint(schema.title, endpoint)
 
             # Update vector store
             vector_store.update(
                 vector_id=str(endpoint.id),
                 embedding=embedding,
-                metadata={
-                    "schema_id": str(endpoint.schema_id),
-                    "path": endpoint.path,
-                    "method": endpoint.method,
-                    "operation_id": endpoint.operation_id,
-                    "summary": endpoint.summary,
-                    "description": endpoint.description,
-                    "tags": endpoint.tags,
-                    "schema_title": schema.title,
-                    "schema_version": schema.version,
-                    "spec": endpoint.spec,
-                },
+                metadata=endpoint.vector_data,
             )
 
             # Update endpoint's updated_at timestamp

@@ -13,6 +13,7 @@ from sentence_transformers import SentenceTransformer
 
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.models.endpoint import Endpoint
 
 logger = get_logger(__name__)
 
@@ -192,6 +193,18 @@ class Embedder:
         """Get the dimension of the embeddings produced by this model."""
         return self.embedding_dimension
 
+    def embed_endpoint(self, service_name: str, endpoint: Endpoint) -> list[float]:
+        """Embed an endpoint's vector data.
+
+        Args:
+            service_name: Name of the service the endpoint belongs to
+            endpoint: Endpoint to embed
+
+        Returns:
+            List of embedding values (vector)
+        """
+        text = f"{service_name} {endpoint.summary or endpoint.description} {', '.join(endpoint.tags)} {endpoint.path}"
+        return self.embed_text(text)
 
 @lru_cache(maxsize=1)
 def get_embedder() -> Embedder:

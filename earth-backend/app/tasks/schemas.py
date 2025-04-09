@@ -215,20 +215,14 @@ def process_endpoints(
         path_method_key = f"{endpoint_data['path']}:{endpoint_data['method']}"
         processed_paths.add(path_method_key)
 
-        # Generate text for embedding
-        text = f"{schema.title} {endpoint_data['path']} {endpoint_data['summary'] or endpoint_data['description']} {', '.join(endpoint_data['tags'])}"
-
-        # Generate embedding
-        embedding = embedder.embed_text(text)
-
         # Check if this endpoint already exists
         if path_method_key in existing_lookup:
             # Update existing endpoint
             endpoint = existing_lookup[path_method_key]
-            update_existing_endpoint(session, endpoint, endpoint_data, embedding, vector_store)
+            update_existing_endpoint(session, endpoint, endpoint_data, schema.title, vector_store)
         else:
             # Create new endpoint
-            create_new_endpoint(session, schema, endpoint_data, embedding, vector_store)
+            create_new_endpoint(session, schema, endpoint_data, schema.title, vector_store)
 
     # Handle endpoints that were deleted from the schema
     handle_deleted_endpoints(session, existing_lookup, processed_paths, vector_store)
@@ -238,7 +232,7 @@ def update_existing_endpoint(
     session: Session,
     endpoint: Endpoint,
     endpoint_data: dict,
-    embedding: list[float],
+    schema_title: str,
     vector_store: VectorStore,
 ) -> None:
     """Update an existing endpoint with new data and embedding."""
@@ -256,22 +250,12 @@ def update_existing_endpoint(
         session.add(endpoint)
         session.commit()
 
+        embedding = get_embedder().embed_endpoint(schema_title, endpoint_data)
         # Update vector store
         vector_store.update(
             vector_id=str(endpoint.id),
             embedding=embedding,
-            metadata={
-                "schema_id": str(endpoint.schema_id),
-                "path": endpoint.path,
-                "method": endpoint.method,
-                "operation_id": endpoint.operation_id,
-                "summary": endpoint.summary,
-                "description": endpoint.description,
-                "tags": endpoint.tags,
-                "schema_title": endpoint.schema.title,
-                "schema_version": endpoint.schema.version,
-                "spec": endpoint.spec,
-            },
+            metadata=endpoint.vector_data,
         )
 
         logger.info(
@@ -284,7 +268,7 @@ def create_new_endpoint(
     session: Session,
     schema: Schema,
     endpoint_data: dict,
-    embedding: list[float],
+    schema_title: str,
     vector_store: VectorStore,
 ) -> None:
     """Create a new endpoint with data and embedding."""
@@ -307,22 +291,12 @@ def create_new_endpoint(
     session.add(endpoint)
     session.commit()
 
+    embedding = get_embedder().embed_endpoint(schema_title, endpoint_data)
     # Add to vector store
     vector_store.add(
         vector_id=str(endpoint.id),
         embedding=embedding,
-        metadata={
-            "schema_id": str(endpoint.schema_id),
-            "path": endpoint.path,
-            "method": endpoint.method,
-            "operation_id": endpoint.operation_id,
-            "summary": endpoint.summary,
-            "description": endpoint.description,
-            "tags": endpoint.tags,
-            "schema_title": schema.title,
-            "schema_version": schema.version,
-            "spec": endpoint.spec,
-        },
+        metadata=endpoint.vector_data,
     )
 
     logger.info(
