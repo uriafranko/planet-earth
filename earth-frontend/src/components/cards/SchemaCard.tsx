@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { FileJson, Trash } from 'lucide-react';
+import { FileJson, RefreshCw, Trash } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Schema } from '@/types/models';
@@ -12,22 +11,29 @@ interface SchemaCardProps {
   schema: Schema;
   onSelect: () => void;
   onDelete: () => void;
+  onReindex?: () => void;
+  isReindexing?: boolean;
   className?: string;
 }
 
-const SchemaCard: React.FC<SchemaCardProps> = ({ 
-  schema, 
-  onSelect, 
+const SchemaCard: React.FC<SchemaCardProps> = ({
+  schema,
+  onSelect,
   onDelete,
-  className
+  onReindex,
+  isReindexing = false,
+  className,
 }) => {
   const { canPerformAction } = useAuth();
-  
+
   const timeAgo = formatDistanceToNow(new Date(schema.created_at), { addSuffix: true });
 
   return (
-    <Card 
-      className={cn('planet-card transition-transform hover:scale-[1.02] cursor-pointer overflow-hidden', className)}
+    <Card
+      className={cn(
+        'planet-card transition-transform hover:scale-[1.02] cursor-pointer overflow-hidden',
+        className
+      )}
       onClick={onSelect}
     >
       <CardHeader className="pb-0">
@@ -50,12 +56,27 @@ const SchemaCard: React.FC<SchemaCardProps> = ({
           </div>
         </div>
       </CardContent>
-      <CardFooter className="pt-0">
-        {canPerformAction("delete") && (
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="ml-auto hover:bg-destructive/10 hover:text-destructive"
+      <CardFooter className="pt-0 flex justify-between">
+        {onReindex && (
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={isReindexing}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onReindex) onReindex();
+            }}
+          >
+            <RefreshCw className={cn('h-4 w-4 mr-1', isReindexing && 'animate-spin')} />
+            Reindex
+          </Button>
+        )}
+
+        {canPerformAction('delete') && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="hover:bg-destructive/10 hover:text-destructive"
             onClick={(e) => {
               e.stopPropagation();
               onDelete();

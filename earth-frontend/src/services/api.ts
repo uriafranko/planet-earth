@@ -144,4 +144,10 @@ export const managementApi = {
     // Use real API instead of mock data
     return fetchApi<void>(`/v1/management/reindex${query}`, 'POST');
   },
+
+  // Reindex a specific endpoint
+  reindexEndpoint: async (endpointId: string): Promise<ApiResponse<void>> => {
+    // Use real API instead of mock data
+    return fetchApi<void>(`/v1/management/endpoints/${endpointId}/reindex`, 'POST');
+  },
 };

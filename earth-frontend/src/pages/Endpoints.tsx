@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FileJson, Filter, RefreshCcw } from 'lucide-react';
+import { FileJson, Filter, RefreshCcw, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/components/layout/AppLayout';
 import { useToast } from '@/hooks/use-toast';
-import { endpointsApi, schemasApi } from '@/services/api';
+import { endpointsApi, managementApi, schemasApi } from '@/services/api';
 import { Endpoint, Schema } from '@/types/models';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import NoData from '@/components/NoData';
@@ -41,19 +40,58 @@ interface EndpointDetailsProps {
 }
 
 const EndpointDetails: React.FC<EndpointDetailsProps> = ({ endpoint, onClose }) => {
+  const { toast } = useToast();
+  const [isReindexing, setIsReindexing] = useState(false);
+
   if (!endpoint) return null;
-  
+
   // Split tags string into array if exists
-  const tags = endpoint.tags ? endpoint.tags.split(',').map(t => t.trim()) : [];
-  
+  const tags = endpoint.tags ? endpoint.tags.split(',').map((t) => t.trim()) : [];
+
+  const handleReindex = async () => {
+    if (!endpoint) return;
+
+    setIsReindexing(true);
+    try {
+      const response = await managementApi.reindexEndpoint(endpoint.id);
+      if (!response.error) {
+        toast({
+          title: 'Success',
+          description: 'Endpoint reindexing has started',
+        });
+      } else {
+        throw new Error(response.error.message);
+      }
+    } catch (error) {
+      console.error('Error reindexing endpoint:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to reindex endpoint',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsReindexing(false);
+    }
+  };
+
   return (
     <Dialog open={!!endpoint} onOpenChange={() => onClose()}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <MethodBadge method={endpoint.method} size="lg" />
-            <span className="font-mono">{endpoint.path}</span>
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2">
+              <MethodBadge method={endpoint.method} size="lg" />
+              <span className="font-mono">{endpoint.path}</span>
+            </DialogTitle>
+            <Button variant="outline" size="sm" onClick={handleReindex} disabled={isReindexing}>
+              {isReindexing ? (
+                <LoadingSpinner className="mr-2 h-4 w-4" />
+              ) : (
+                <RefreshCw className="mr-2 h-4 w-4" />
+              )}
+              Reindex
+            </Button>
+          </div>
           <DialogDescription>
             {endpoint.operation_id && (
               <span className="block mt-2">
@@ -62,7 +100,7 @@ const EndpointDetails: React.FC<EndpointDetailsProps> = ({ endpoint, onClose }) 
             )}
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-4">
           {endpoint.summary && (
             <div>
@@ -70,14 +108,14 @@ const EndpointDetails: React.FC<EndpointDetailsProps> = ({ endpoint, onClose }) 
               <p className="text-sm">{endpoint.summary}</p>
             </div>
           )}
-          
+
           {endpoint.description && (
             <div>
               <h3 className="text-sm font-semibold mb-1">Description</h3>
               <p className="text-sm whitespace-pre-line">{endpoint.description}</p>
             </div>
           )}
-          
+
           {tags.length > 0 && (
             <div>
               <h3 className="text-sm font-semibold mb-1">Tags</h3>
@@ -90,7 +128,7 @@ const EndpointDetails: React.FC<EndpointDetailsProps> = ({ endpoint, onClose }) 
               </div>
             </div>
           )}
-          
+
           <div className="space-y-1">
             <h3 className="text-sm font-semibold">Metadata</h3>
             <div className="grid grid-cols-2 gap-2 text-sm">
@@ -116,11 +154,11 @@ const Endpoints: React.FC = () => {
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   // Get schema ID from URL query parameters
   const queryParams = new URLSearchParams(location.search);
   const schemaIdFromUrl = queryParams.get('schema');
-  
+
   const [schemas, setSchemas] = useState<Schema[]>([]);
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [selectedSchema, setSelectedSchema] = useState<string | null>(schemaIdFromUrl);
@@ -129,7 +167,7 @@ const Endpoints: React.FC = () => {
   const [isLoadingSchemas, setIsLoadingSchemas] = useState(true);
   const [includeDeleted, setIncludeDeleted] = useState(false);
   const [methodFilters, setMethodFilters] = useState<string[]>([]);
-  
+
   // Load all schemas
   useEffect(() => {
     const loadSchemas = async () => {
@@ -138,7 +176,7 @@ const Endpoints: React.FC = () => {
         const response = await schemasApi.getSchemas();
         if (response.data) {
           setSchemas(response.data);
-          
+
           // If no schema is selected and we have schemas, select the first one
           if (!selectedSchema && response.data.length > 0) {
             setSelectedSchema(response.data[0].id);
@@ -155,10 +193,10 @@ const Endpoints: React.FC = () => {
         setIsLoadingSchemas(false);
       }
     };
-    
+
     loadSchemas();
   }, [toast, selectedSchema]);
-  
+
   // Load endpoints when selected schema changes
   useEffect(() => {
     const loadEndpoints = async () => {
@@ -167,7 +205,7 @@ const Endpoints: React.FC = () => {
         setIsLoading(false);
         return;
       }
-      
+
       setIsLoading(true);
       try {
         const response = await endpointsApi.getEndpoints(selectedSchema, includeDeleted);
@@ -185,20 +223,20 @@ const Endpoints: React.FC = () => {
         setIsLoading(false);
       }
     };
-    
+
     loadEndpoints();
   }, [selectedSchema, includeDeleted, toast]);
-  
+
   const handleSchemaChange = (schemaId: string) => {
     setSelectedSchema(schemaId);
     // Update URL query parameter
     navigate(`/endpoints?schema=${schemaId}`);
   };
-  
+
   const handleIncludeDeletedChange = (checked: boolean) => {
     setIncludeDeleted(checked);
   };
-  
+
   const toggleMethodFilter = (method: string) => {
     setMethodFilters((prev) => {
       if (prev.includes(method)) {
@@ -208,10 +246,10 @@ const Endpoints: React.FC = () => {
       }
     });
   };
-  
+
   // Get unique HTTP methods from endpoints
   const availableMethods = [...new Set(endpoints.map((e) => e.method))];
-  
+
   // Filter endpoints by method
   const filteredEndpoints = methodFilters.length
     ? endpoints.filter((endpoint) => methodFilters.includes(endpoint.method))
@@ -223,11 +261,9 @@ const Endpoints: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">API Endpoints</h1>
-            <p className="text-muted-foreground">
-              View and manage API endpoints from your schemas
-            </p>
+            <p className="text-muted-foreground">View and manage API endpoints from your schemas</p>
           </div>
-          
+
           <div className="flex flex-col sm:flex-row gap-2">
             <Select
               value={selectedSchema || ''}
@@ -248,7 +284,7 @@ const Endpoints: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
-            
+
             <div className="flex gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -274,7 +310,7 @@ const Endpoints: React.FC = () => {
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
-              
+
               <Button
                 variant="outline"
                 size="icon"
@@ -288,7 +324,7 @@ const Endpoints: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1">
             {methodFilters.length > 0 && (
@@ -320,7 +356,7 @@ const Endpoints: React.FC = () => {
               </div>
             )}
           </div>
-          
+
           <div className="flex items-center gap-2">
             <Label htmlFor="include-deleted" className="text-sm">
               Include deleted
@@ -349,11 +385,7 @@ const Endpoints: React.FC = () => {
           </div>
         ) : (
           <NoData
-            title={
-              selectedSchema
-                ? 'No endpoints found'
-                : 'No schema selected'
-            }
+            title={selectedSchema ? 'No endpoints found' : 'No schema selected'}
             description={
               selectedSchema
                 ? includeDeleted
@@ -365,10 +397,7 @@ const Endpoints: React.FC = () => {
         )}
       </div>
 
-      <EndpointDetails
-        endpoint={selectedEndpoint}
-        onClose={() => setSelectedEndpoint(null)}
-      />
+      <EndpointDetails endpoint={selectedEndpoint} onClose={() => setSelectedEndpoint(null)} />
     </AppLayout>
   );
 };

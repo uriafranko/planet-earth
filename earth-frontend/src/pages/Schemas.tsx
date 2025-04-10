@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Plus, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/components/layout/AppLayout';
 import { useToast } from '@/hooks/use-toast';
-import { schemasApi } from '@/services/api';
+import { managementApi, schemasApi } from '@/services/api';
 import { Schema } from '@/types/models';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import SchemaCard from '@/components/cards/SchemaCard';
@@ -44,6 +43,7 @@ const Schemas: React.FC = () => {
   const [schemaFile, setSchemaFile] = useState<File | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [schemaToDelete, setSchemaToDelete] = useState<Schema | null>(null);
+  const [reindexingSchemas, setReindexingSchemas] = useState<string[]>([]);
 
   useEffect(() => {
     loadSchemas();
@@ -114,6 +114,33 @@ const Schemas: React.FC = () => {
     }
   };
 
+  const handleReindex = async (schemaId: string) => {
+    try {
+      setReindexingSchemas((prev) => [...prev, schemaId]);
+      const response = await managementApi.reindexVectorStore(schemaId);
+      if (!response.error) {
+        toast({
+          title: 'Reindexing Started',
+          description: 'Vector store reindexing has been initiated',
+        });
+      } else {
+        throw new Error(response.error.message);
+      }
+    } catch (error) {
+      console.error('Error reindexing schema:', error);
+      toast({
+        title: 'Reindex Error',
+        description: 'Failed to initiate reindexing process',
+        variant: 'destructive',
+      });
+    } finally {
+      // After a delay, remove from reindexing state
+      setTimeout(() => {
+        setReindexingSchemas((prev) => prev.filter((id) => id !== schemaId));
+      }, 2000);
+    }
+  };
+
   const handleDelete = async () => {
     if (!schemaToDelete) return;
 
@@ -155,9 +182,7 @@ const Schemas: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">API Schemas</h1>
-            <p className="text-muted-foreground">
-              Manage your OpenAPI schema definitions
-            </p>
+            <p className="text-muted-foreground">Manage your OpenAPI schema definitions</p>
           </div>
           {canPerformAction('create') && (
             <Button onClick={() => setUploadDialogOpen(true)}>
@@ -182,9 +207,11 @@ const Schemas: React.FC = () => {
                   setSchemaToDelete(schema);
                   setDeleteDialogOpen(true);
                 }}
+                onReindex={() => handleReindex(schema.id)}
+                isReindexing={reindexingSchemas.includes(schema.id)}
               />
             ))}
-            
+
             {canPerformAction('create') && (
               <div
                 onClick={() => setUploadDialogOpen(true)}
@@ -231,9 +258,7 @@ const Schemas: React.FC = () => {
                   }
                 }}
               />
-              <p className="text-sm text-muted-foreground">
-                Supported formats: .json, .yaml, .yml
-              </p>
+              <p className="text-sm text-muted-foreground">Supported formats: .json, .yaml, .yml</p>
             </div>
           </div>
           <DialogFooter>
@@ -241,7 +266,11 @@ const Schemas: React.FC = () => {
               Cancel
             </Button>
             <Button onClick={handleUpload} disabled={!schemaFile || isUploading}>
-              {isUploading ? <LoadingSpinner size="sm" className="mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+              {isUploading ? (
+                <LoadingSpinner size="sm" className="mr-2" />
+              ) : (
+                <Upload className="h-4 w-4 mr-2" />
+              )}
               Upload
             </Button>
           </DialogFooter>
@@ -254,13 +283,16 @@ const Schemas: React.FC = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Schema</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete the schema "{schemaToDelete?.title}"?
-              This action will also delete all associated endpoints and cannot be undone.
+              Are you sure you want to delete the schema "{schemaToDelete?.title}"? This action will
+              also delete all associated endpoints and cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground"
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

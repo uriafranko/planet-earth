@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Search as SearchIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,20 +17,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 const Search: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  
+
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<EndpointSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [filterMethod, setFilterMethod] = useState<string | null>(null);
-  
+  const [filterSchemaId, setFilterSchemaId] = useState<string | null>(null);
+  const [includeDeprecated, setIncludeDeprecated] = useState(false);
+
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    
+
     if (!searchTerm.trim()) {
       toast({
         title: 'Search Error',
@@ -40,19 +43,18 @@ const Search: React.FC = () => {
       });
       return;
     }
-    
+
     setIsLoading(true);
     setHasSearched(true);
-    
+
     const query: SearchQuery = {
       q: searchTerm,
       top_k: 20,
+      filter_method: filterMethod,
+      filter_schema_id: filterSchemaId,
+      include_deprecated: includeDeprecated,
     };
-    
-    if (filterMethod) {
-      query.filter_method = filterMethod;
-    }
-    
+
     try {
       const response = await searchApi.searchEndpoints(query);
       if (response.data) {
@@ -75,7 +77,7 @@ const Search: React.FC = () => {
       setIsLoading(false);
     }
   };
-  
+
   const handleResultSelect = (result: EndpointSearchResult) => {
     navigate(`/endpoints?schema=${result.schema_id}`);
   };
@@ -85,9 +87,7 @@ const Search: React.FC = () => {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Semantic Search</h1>
-          <p className="text-muted-foreground">
-            Search for API endpoints using natural language
-          </p>
+          <p className="text-muted-foreground">Search for API endpoints using natural language</p>
         </div>
 
         <form onSubmit={handleSearch} className="space-y-4">
@@ -101,26 +101,41 @@ const Search: React.FC = () => {
               />
               <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             </div>
-            
-            <Select
-              value={filterMethod || "none"}
-              onValueChange={(value) => setFilterMethod(value === "none" ? null : value)}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Any Method" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Any Method</SelectItem>
-                <SelectItem value="GET">GET</SelectItem>
-                <SelectItem value="POST">POST</SelectItem>
-                <SelectItem value="PUT">PUT</SelectItem>
-                <SelectItem value="DELETE">DELETE</SelectItem>
-                <SelectItem value="PATCH">PATCH</SelectItem>
-              </SelectContent>
-            </Select>
-            
+
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Select
+                value={filterMethod || 'none'}
+                onValueChange={(value) => setFilterMethod(value === 'none' ? null : value)}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Any Method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Any Method</SelectItem>
+                  <SelectItem value="GET">GET</SelectItem>
+                  <SelectItem value="POST">POST</SelectItem>
+                  <SelectItem value="PUT">PUT</SelectItem>
+                  <SelectItem value="DELETE">DELETE</SelectItem>
+                  <SelectItem value="PATCH">PATCH</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="include-deprecated"
+                  checked={includeDeprecated}
+                  onCheckedChange={setIncludeDeprecated}
+                />
+                <Label htmlFor="include-deprecated">Include deprecated</Label>
+              </div>
+            </div>
+
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? <LoadingSpinner size="sm" className="mr-2" /> : <SearchIcon className="h-4 w-4 mr-2" />}
+              {isLoading ? (
+                <LoadingSpinner size="sm" className="mr-2" />
+              ) : (
+                <SearchIcon className="h-4 w-4 mr-2" />
+              )}
               Search
             </Button>
           </div>
@@ -148,7 +163,9 @@ const Search: React.FC = () => {
                 description={
                   filterMethod
                     ? `No ${filterMethod} endpoints found matching "${searchTerm}"`
-                    : `No endpoints found matching "${searchTerm}"`
+                    : `No endpoints found matching "${searchTerm}"${
+                        includeDeprecated ? ' (including deprecated)' : ''
+                      }`
                 }
                 icon={<SearchIcon className="h-8 w-8 text-muted-foreground" />}
               />
