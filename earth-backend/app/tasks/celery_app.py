@@ -28,9 +28,10 @@ celery_app.conf.update(
     task_time_limit=600,  # 10 minutes timeout for processing
     task_soft_time_limit=540,  # 9 minutes soft timeout
     result_expires=86400,  # Keep results for 1 day
-    worker_concurrency=4,
+    worker_concurrency=2,
     worker_prefetch_multiplier=1,
-    worker_max_tasks_per_child=150,
+    worker_max_tasks_per_child=10,
+    worker_max_memory_per_child=12288 * 2,  # 24MB
 )
 
 # Import tasks to ensure they're registered with Celery
