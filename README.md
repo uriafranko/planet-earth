@@ -1,9 +1,8 @@
-# Planet Earth
 <div align="center">
 
 <picture>
   <source srcset="assets/planet-logo.png" media="(prefers-color-scheme: dark)" alt="Planet Earth Logo">
-  <img src="assets/planet-logo.png" alt="Planet Earth Logo" width="250" height="250">
+  <img src="assets/planet-logo.png" alt="Planet Earth Logo" width="300" height="300">
 </picture>
 
 **Unlocking your internal APIs for AI — The missing bridge that transforms how AI tools discover and interact with your organization's hidden service ecosystem.**
@@ -28,27 +27,26 @@ Planet Earth is an open-source platform that bridges the gap between modern AI-p
 
 ## 📋 Table of Contents
 
-- [Planet Earth](#planet-earth)
-  - [🚀 Overview](#-overview)
-  - [✨ Features](#-features)
-  - [📋 Table of Contents](#-table-of-contents)
-  - [🏗️ System Architecture](#️-system-architecture)
-    - [Flow Diagram](#flow-diagram)
-  - [🔧 Installation](#-installation)
-    - [Prerequisites](#prerequisites)
-    - [Quick Start with Docker Compose](#quick-start-with-docker-compose)
-    - [Kubernetes Deployment with Helm](#kubernetes-deployment-with-helm)
-  - [🚀 Usage](#-usage)
-    - [Uploading OpenAPI Schemas](#uploading-openapi-schemas)
-    - [Connecting to an AI IDE](#connecting-to-an-ai-ide)
-    - [Using the APIs in your IDE](#using-the-apis-in-your-ide)
-  - [📁 Project Structure](#-project-structure)
-  - [💻 Development](#-development)
-    - [Setting Up Development Environment](#setting-up-development-environment)
-    - [Running Tests](#running-tests)
-  - [👥 Contributing](#-contributing)
-  - [📜 License](#-license)
-  - [🌐 Community](#-community)
+- [🚀 Overview](#-overview)
+- [✨ Features](#-features)
+- [📋 Table of Contents](#-table-of-contents)
+- [🏗️ System Architecture](#️-system-architecture)
+  - [Flow Diagram](#flow-diagram)
+- [🔧 Installation](#-installation)
+  - [Prerequisites](#prerequisites)
+  - [Quick Start with Docker Compose](#quick-start-with-docker-compose)
+  - [Kubernetes Deployment with Helm](#kubernetes-deployment-with-helm)
+- [🚀 Usage](#-usage)
+  - [Uploading OpenAPI Schemas](#uploading-openapi-schemas)
+  - [Connecting to an AI IDE](#connecting-to-an-ai-ide)
+  - [Using the APIs in your IDE](#using-the-apis-in-your-ide)
+- [📁 Project Structure](#-project-structure)
+- [💻 Development](#-development)
+  - [Setting Up Development Environment](#setting-up-development-environment)
+  - [Running Tests](#running-tests)
+- [👥 Contributing](#-contributing)
+- [📜 License](#-license)
+- [🌐 Community](#-community)
 
 ## 🏗️ System Architecture
 
