@@ -13,9 +13,8 @@ from app.core.logging import get_logger
 from app.db.session import get_session_context
 from app.models.endpoint import Endpoint
 from app.models.schema import Schema
-from app.services.embedder import get_embedder
+from app.services.embedder import embed_endpoint
 from app.services.parser import OpenAPIParser
-from app.services.vector_store import VectorStore, get_vector_store
 from app.tasks.celery_app import celery_app
 
 
@@ -127,13 +126,16 @@ def process_schema(schema_id: str, file_content: bytes, file_name: str) -> dict:
             # Update schema metadata
             schema.title = title
             schema.version = version
-            schema.status = "processed"  # Mark as successfully processed
-
+            schema.status = "processing"  # Mark as processing
             session.add(schema)
             session.commit()
 
             # Process the endpoints
             process_endpoints(session, schema, endpoints)
+
+            schema.status = "processed"  # Mark as successfully processed
+            session.add(schema)
+            session.commit()
 
             logger.info(
                 f"Successfully processed schema {schema_id}",
@@ -190,9 +192,6 @@ def process_endpoints(
         endpoints: List of endpoint dictionaries
         parser: OpenAPIParser instance for generating embedding texts
     """
-    # Initialize the embedder and vector store
-    vector_store = get_vector_store()
-
     # Fetch existing endpoints for this schema to avoid duplicates
     existing_endpoints = session.exec(
         select(Endpoint).where(
@@ -218,13 +217,13 @@ def process_endpoints(
         if path_method_key in existing_lookup:
             # Update existing endpoint
             endpoint = existing_lookup[path_method_key]
-            update_existing_endpoint(session, endpoint, endpoint_data, schema.title, vector_store)
+            update_existing_endpoint(session, endpoint, endpoint_data, schema.title)
         else:
             # Create new endpoint
-            create_new_endpoint(session, schema, endpoint_data, schema.title, vector_store)
+            create_new_endpoint(session, schema, endpoint_data, schema.title)
 
     # Handle endpoints that were deleted from the schema
-    handle_deleted_endpoints(session, existing_lookup, processed_paths, vector_store)
+    handle_deleted_endpoints(session, existing_lookup, processed_paths)
 
 
 def update_existing_endpoint(
@@ -232,7 +231,6 @@ def update_existing_endpoint(
     endpoint: Endpoint,
     endpoint_data: dict,
     schema_title: str,
-    vector_store: VectorStore,
 ) -> None:
     """Update an existing endpoint with new data and embedding."""
     # Check if the endpoint has actually changed
@@ -242,20 +240,19 @@ def update_existing_endpoint(
         endpoint.summary = endpoint_data["summary"]
         endpoint.description = endpoint_data["description"]
         endpoint.tags = json.dumps(endpoint_data["tags"])
-        endpoint.spec = json.dumps(endpoint_data["spec"])
+        endpoint.spec = endpoint_data["spec"]
         endpoint.hash = endpoint_data["hash"]
+        endpoint.embedding_vector = embed_endpoint(
+            schema_title,
+            endpoint_data["summary"],
+            endpoint_data["description"],
+            endpoint_data["tags"],
+            endpoint_data["path"],
+        )
         endpoint.updated_at = datetime.datetime.now(tz=datetime.UTC)
 
         session.add(endpoint)
         session.commit()
-
-        embedding = get_embedder().embed_endpoint(schema_title, endpoint)
-        # Update vector store
-        vector_store.update(
-            vector_id=str(endpoint.id),
-            embedding=embedding,
-            metadata=endpoint.vector_data,
-        )
 
         logger.info(
             f"Updated endpoint: {endpoint.path} {endpoint.method}",
@@ -268,7 +265,6 @@ def create_new_endpoint(
     schema: Schema,
     endpoint_data: dict,
     schema_title: str,
-    vector_store: VectorStore,
 ) -> None:
     """Create a new endpoint with data and embedding."""
     # Create new endpoint record
@@ -281,22 +277,21 @@ def create_new_endpoint(
         summary=endpoint_data["summary"],
         description=endpoint_data["description"],
         tags=json.dumps(endpoint_data["tags"]),
-        spec=json.dumps(endpoint_data["spec"]),
+        spec=endpoint_data["spec"],
         hash=endpoint_data["hash"],
         created_at=datetime.datetime.now(tz=datetime.UTC),
         updated_at=datetime.datetime.now(tz=datetime.UTC),
+        embedding_vector=embed_endpoint(
+            schema_title,
+            endpoint_data["summary"],
+            endpoint_data["description"],
+            endpoint_data["tags"],
+            endpoint_data["path"],
+        ),
     )
 
     session.add(endpoint)
     session.commit()
-
-    embedding = get_embedder().embed_endpoint(schema_title, endpoint)
-    # Add to vector store
-    vector_store.add(
-        vector_id=str(endpoint.id),
-        embedding=embedding,
-        metadata=endpoint.vector_data,
-    )
 
     logger.info(
         f"Created endpoint: {endpoint.path} {endpoint.method}",
@@ -308,7 +303,6 @@ def handle_deleted_endpoints(
     session: Session,
     existing_lookup: dict[str, Endpoint],
     processed_paths: set[str],
-    vector_store: VectorStore,
 ) -> None:
     """Mark endpoints as deleted if they're not in the new spec."""
     for path_method, endpoint in existing_lookup.items():
@@ -316,9 +310,6 @@ def handle_deleted_endpoints(
             # Mark as deleted
             endpoint.deleted_at = datetime.datetime.now(tz=datetime.UTC)
             session.add(endpoint)
-
-            # Remove from vector store
-            vector_store.delete(str(endpoint.id))
 
             logger.info(
                 f"Marked endpoint as deleted: {endpoint.path} {endpoint.method}",

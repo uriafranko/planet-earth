@@ -10,12 +10,12 @@ case "$SERVICE_TYPE" in
   "api" | "web" | "server")
     echo "Starting FastAPI server..."
     # Run uvicorn directly
-    exec python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+    exec uvicorn app.main:app --host 0.0.0.0 --port 8000
     ;;
   "worker" | "celery")
     echo "Starting Celery worker..."
     # Run celery directly
-    exec python -m celery -A app.tasks.celery_app worker --loglevel=INFO
+    exec celery -A app.tasks.celery_app worker --loglevel=INFO
     ;;
   *)
     echo "Unknown service type: $SERVICE_TYPE"

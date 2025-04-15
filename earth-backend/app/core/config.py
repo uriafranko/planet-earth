@@ -27,8 +27,8 @@ class Settings(BaseSettings):
 
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = "secret"
-    POSTGRES_SERVER: str = "localhost"
-    POSTGRES_PORT: int = 5432
+    POSTGRES_SERVER: str = "127.0.0.1"
+    POSTGRES_PORT: int = 5433
     POSTGRES_DB: str = "planet_earth_db"
     DATABASE_URL: str = f"postgresql+psycopg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_SERVER}:{POSTGRES_PORT}/{POSTGRES_DB}"
 
@@ -39,15 +39,9 @@ class Settings(BaseSettings):
     REDIS_DB: int = 0
     REDIS_URL: str = "redis://redis:6379/0"
 
-    # Qdrant (Vector DB)
-    QDRANT_URL: str = ""
-    QDRANT_HOST: str = "qdrant"
-    QDRANT_PORT: int = 6333
-    QDRANT_COLLECTION_NAME: str = "endpoints"
-    QDRANT_GRPC_PORT: int = 6334
-    QDRANT_API_KEY: str = ""  # Empty by default, set in .env if needed
-    QDRANT_PREFER_GRPC: bool = False
-    QDRANT_HTTPS: bool = False
+    # Vector Database Settings
+    VECTOR_STORE_TYPE: str = "postgres"  # Options: postgres, qdrant, chroma
+
     # Embedding Service
     EMBEDDING_MODEL_NAME: str = "all-MiniLM-L6-v2"
     EMBEDDING_DEVICE: str = "auto"  # "auto", "cpu", "cuda", "mps"
@@ -62,7 +56,7 @@ class Settings(BaseSettings):
 
     # Model config for loading from .env file
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="ignore"
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
     @property
@@ -72,6 +66,12 @@ class Settings(BaseSettings):
             or f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
         )
 
+    @property
+    def postgres_url(self) -> str:
+        return (
+            self.DATABASE_URL
+            or f"postgresql+psycopg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        )
 
 # Create settings instance to be imported throughout the app
 settings = Settings()

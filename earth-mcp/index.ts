@@ -1,5 +1,4 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { QdrantClient } from '@qdrant/js-client-rest';
 import { z } from 'zod';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import express, { type Request, type Response } from 'express';
@@ -7,7 +6,11 @@ import { pipeline, env } from '@huggingface/transformers';
 import path from 'path';
 import fs from 'fs';
 
-// Configure Hugging Face to cache models locally
+// Drizzle ORM imports
+import { db } from './db/client.js';
+import { endpoints } from './db/schema.js';
+import { cosineDistance, isNull, sql, gt, desc } from 'drizzle-orm';
+
 const MODEL_ID = 'sentence-transformers/all-MiniLM-L6-v2';
 const CACHE_DIR = path.join(process.cwd(), '.cache', 'huggingface');
 
@@ -25,15 +28,6 @@ const server = new McpServer({
   version: '0.0.1',
   description: 'Search For Any API service endpoint for documentation.',
 });
-
-// Configure Qdrant client
-const qdrantClient = new QdrantClient({
-  url: process.env.QDRANT_URL || 'http://localhost:6333',
-  apiKey: process.env.QDRANT_API_KEY,
-});
-
-// Define the collection name for Qdrant
-const COLLECTION_NAME = process.env.QDRANT_COLLECTION || 'my_collection';
 
 // Declare the model variable globally
 let embeddingModel: any = null;
@@ -80,14 +74,45 @@ server.tool(
     try {
       // Generate embedding vector for the query
       const vector = await getEmbedding(query);
+      const similarity = sql<number>`1 - (${cosineDistance(endpoints.embedding_vector, vector)})`;
+      // Perform similarity search using Drizzle ORM and pgvector
+      const results = await db
+        .select({
+          id: endpoints.id,
+          schema_id: endpoints.schema_id,
+          path: endpoints.path,
+          method: endpoints.method,
+          operation_id: endpoints.operation_id,
+          summary: endpoints.summary,
+          description: endpoints.description,
+          tags: endpoints.tags,
+          spec: endpoints.spec,
+          similarity: similarity,
+        })
+        .from(endpoints)
+        // .where(
+        //   and(
+        //     isNull(endpoints.deleted_at),
+        //     lte(cosineDistance(endpoints.embedding_vector, vector), 0.5)
+        //   )
+        // )
+        .where(gt(similarity, 0.4))
+        .orderBy(desc(similarity))
+        .limit(limit);
 
-      // Search in Qdrant collection
-      const searchResults = await qdrantClient.search(COLLECTION_NAME, {
-        vector: vector,
-        limit: limit,
-        with_payload: true,
-        score_threshold: 0.5,
-      });
+      // Map results to EndpointSearchResult structure
+      const mapped = results.map((endpoint: any) => ({
+        id: String(endpoint.id),
+        schema_id: String(endpoint.schema_id),
+        path: endpoint.path,
+        method: endpoint.method,
+        operation_id: endpoint.operation_id,
+        summary: endpoint.summary,
+        description: endpoint.description,
+        tags: endpoint.tags ? JSON.parse(endpoint.tags) : [],
+        similarity: endpoint.similarity,
+        spec: endpoint.spec ?? null,
+      }));
 
       return {
         content: [
@@ -96,10 +121,7 @@ server.tool(
             text: JSON.stringify(
               {
                 status: 'success',
-                results: searchResults.map((result) => ({
-                  score: result.score,
-                  payload: result.payload,
-                })),
+                results: mapped,
               },
               null,
               2
@@ -125,8 +147,6 @@ server.tool(
 
 // Helper function to get embeddings for the query using all-MiniLM-L6-v2
 async function getEmbedding(text: string): Promise<number[]> {
-  console.log(`Generating embedding for: ${text}`);
-
   try {
     // Use the pre-loaded model instead of initializing it each time
     if (!embeddingModel) {

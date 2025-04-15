@@ -1,7 +1,7 @@
 from collections.abc import Generator
 from contextlib import contextmanager
 
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine, text
 
 from app.core.config import settings
 from app.core.logging import get_logger
@@ -10,7 +10,7 @@ logger = get_logger(__name__)
 
 # Create SQLModel engine
 engine = create_engine(
-    settings.DATABASE_URL,
+    settings.postgres_url,
     echo=False,  # Set to True for debugging SQL queries, but don't use in production
     pool_pre_ping=True,  # Verify connections before usage to avoid stale connections
 )
@@ -51,3 +51,13 @@ def get_session_context() -> Generator[Session, None, None]:
         raise
     finally:
         session.close()
+
+def install_extension():
+    """Install PostgreSQL extensions if needed."""
+    logger.info("Installing PostgreSQL extensions")
+    session = get_session()
+    with get_session_context() as session:
+        # Check if the extension is already installed
+        session.exec(text('CREATE EXTENSION IF NOT EXISTS vector'))
+        # Removed the check for existing extension
+        session.commit()

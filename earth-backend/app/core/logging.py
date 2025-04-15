@@ -29,7 +29,6 @@ class JSONLogFormatter(logging.Formatter):
 
 def setup_logging(log_level: str | None = None) -> None:
     """Configure logging with JSON formatter for structured logging."""
-    print(settings.LOG_LEVEL)
     level = log_level or settings.LOG_LEVEL or "INFO"
     numeric_level = getattr(logging, level.upper(), None)
     if not isinstance(numeric_level, int):
@@ -71,5 +70,5 @@ def get_logger(name: str) -> logging.Logger:
         self.makeRecord = factory
         return self
 
-    logger.with_context = with_context.__get__(logger)
+    # logger.with_context = with_context.__get__(logger)
     return logger

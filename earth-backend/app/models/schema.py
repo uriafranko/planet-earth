@@ -7,7 +7,6 @@ from app.models.base import BaseModel
 if TYPE_CHECKING:
     from app.models.endpoint import Endpoint
 
-
 class Schema(BaseModel, table=True):
     """Model for OpenAPI schemas.
 
@@ -57,3 +56,5 @@ class SchemaUpdate(SQLModel):
 
     title: str | None = None
     version: str | None = None
+
+

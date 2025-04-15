@@ -1,0 +1,29 @@
+{{- if .Values.redis.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: "{{ .Values.redis.image }}"
+          command: ["redis-server", "--requirepass", "{{ .Values.redis.password }}"]
+          resources:
+            requests:
+              cpu: "{{ .Values.redisResources.requests.cpu }}"
+              memory: "{{ .Values.redisResources.requests.memory }}"
+            limits:
+              cpu: "{{ .Values.redisResources.limits.cpu }}"
+              memory: "{{ .Values.redisResources.limits.memory }}"
+          ports:
+            - containerPort: 6379
+{{- end }}

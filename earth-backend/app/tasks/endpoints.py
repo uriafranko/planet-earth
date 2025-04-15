@@ -5,7 +5,6 @@ such as reindexing in the vector database.
 """
 
 import datetime
-import json
 import uuid
 
 from sqlmodel import select
@@ -14,8 +13,7 @@ from app.core.logging import get_logger
 from app.db.session import get_session_context
 from app.models.endpoint import Endpoint
 from app.models.schema import Schema
-from app.services.embedder import get_embedder
-from app.services.vector_store import get_vector_store
+from app.services.embedder import embed_endpoint
 from app.tasks.celery_app import celery_app
 
 logger = get_logger(__name__)
@@ -43,10 +41,6 @@ def reindex_endpoint(self, endpoint_id: str) -> dict:
     logger.info(f"Reindexing endpoint {endpoint_id}")
 
     try:
-        # Initialize services
-        embedder = get_embedder()
-        vector_store = get_vector_store()
-
         with get_session_context() as session:
             # Get the endpoint
             endpoint = session.get(Endpoint, uuid.UUID(endpoint_id))
@@ -62,17 +56,14 @@ def reindex_endpoint(self, endpoint_id: str) -> dict:
                 logger.error(error_message)
                 raise ValueError(error_message)
 
-            # Generate embedding
-            embedding = embedder.embed_endpoint(schema.title, endpoint)
-
-            # Update vector store
-            vector_store.update(
-                vector_id=str(endpoint.id),
-                embedding=embedding,
-                metadata=endpoint.vector_data,
-            )
-
             # Update endpoint's updated_at timestamp
+            endpoint.embedding_vector = embed_endpoint(
+                schema.title,
+                endpoint.summary,
+                endpoint.description,
+                endpoint.tags,
+                endpoint.path,
+            )
             endpoint.updated_at = datetime.datetime.now(tz=datetime.UTC)
             session.add(endpoint)
             session.commit()

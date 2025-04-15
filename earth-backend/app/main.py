@@ -1,16 +1,37 @@
-from fastapi import FastAPI
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException, Query
+from fastapi_mcp import FastApiMCP
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
+from sqlmodel import SQLModel
+from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
+import app.models # noqa: ALL
+from app.db.session import engine, install_extension
 from app.api.v1 import management, schemas, search
 from app.core.config import settings
+from app.models.endpoint import EndpointSearchResult
+from app.services.embedder import get_embedder
+from app.mcp_app.mcp import mcp_app
+from app.services.vector_search import search_vector_by_text
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan context manager."""
+    install_extension()
+    SQLModel.metadata.create_all(engine)
+    get_embedder()
+    yield
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     docs_url=None,  # We'll define a custom docs url that handles auth conditionally
     redoc_url=None,
+    lifespan=lifespan,
 )
 
 # Set all CORS enabled origins
@@ -47,29 +68,32 @@ async def health_check():
     """Basic health check endpoint."""
     return {"status": "healthy"}
 
+class SPAStaticFiles(StaticFiles):
+    async def get_response(self, path: str, scope):
+        """Serve the React app's index.html for all paths."""
+        try:
+            response = await super().get_response(path, scope)
+        except (HTTPException, StarletteHTTPException) as ex:
+            if ex.status_code == 404:
+                return await super().get_response("index.html", scope)
+            else:
+                raise ex
+        return response
 
-@app.get("/", include_in_schema=False)
-async def root():
-    """Root endpoint with basic API information."""
-    return {
-        "name": settings.PROJECT_NAME,
-        "version": "0.1.0",  # Consider getting from pyproject.toml
-        "description": "OpenAPI Ingestion & Local Vector-Search Service",
-        "docs": "/docs",
-        "api_v1": settings.API_V1_STR,
-    }
 
+# Serve React app static files from app/ui at root URL
+app.mount("/ui/", SPAStaticFiles(directory="app/ui", html=True), name="ui")
 
 def custom_openapi():
     """Custom OpenAPI schema generation function."""
-    if app.openapi_schema:
-        return app.openapi_schema
+    if app.openapi_schema: # type: ignore
+        return app.openapi_schema # type: ignore
 
     openapi_schema = get_openapi(
         title=settings.PROJECT_NAME,
         version="0.1.0",
         description="OpenAPI Ingestion & Local Vector-Search Service",
-        routes=app.routes,
+        routes=app.routes,  # type: ignore
     )
 
     # You can customize the OpenAPI schema here if needed
@@ -86,8 +110,40 @@ def custom_openapi():
         # Apply security globally or to specific operations
         openapi_schema["security"] = [{"bearerAuth": []}]
 
-    app.openapi_schema = openapi_schema
-    return app.openapi_schema
+    app.openapi_schema = openapi_schema  # type: ignore
+    return app.openapi_schema # type: ignore
 
 
 app.openapi = custom_openapi
+
+# app.mount("/mcp/", mcp_app.sse_app())
+
+
+
+# Explicit operation_id (tool will be named "find_api_spec")
+@app.get(
+    "/find_api_spec",
+    operation_id="find_api_spec",
+    description="Find any API endpoint documentation by service name and description.",
+    response_model=list[EndpointSearchResult],
+    tags=["API Search"],
+)
+async def find_api_spec(
+    service_name: str = Query(..., description="The name of the service"),
+    description: str = Query(..., description="A brief description of the API endpoint to search for")) -> list[EndpointSearchResult]:
+    """
+    Find any API endpoint documentation by service name and description.
+    Search query for API endpoint documentation - e.g. "Slack - Search messages in channels" or "GitHub - Create repository by name"
+    """
+    return search_vector_by_text(
+            query_text=f"{service_name} - {description}",
+            k=5,
+            similarity_threshold=0.4,
+    )
+# Only include specific operations
+mcp = FastApiMCP(
+    app,
+    include_operations=["find_api_spec"]
+)
+
+mcp.mount()

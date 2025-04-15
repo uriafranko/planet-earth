@@ -73,10 +73,10 @@ async def reindex_vector_store(
 
     # Convert UUID to string for serialization
     schema_id_str = str(schema_id) if schema_id else None
-    
+
     # Using Celery task for reindexing all endpoints
     task = reindex_schema_endpoints.delay(schema_id=schema_id_str)
-    
+
     return {
         "message": f"Reindexing started in the background (task ID: {task.id})",
         "task_id": task.id,

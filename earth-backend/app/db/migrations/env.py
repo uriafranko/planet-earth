@@ -14,15 +14,15 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 # Import all SQLModel models to ensure they are registered with SQLModel.metadata
 # These imports must be after the sys.path modification to ensure the correct path is used
-from app.models.endpoint import Endpoint  # noqa: E402, F401
-from app.models.schema import Schema  # noqa: E402, F401
+from app.models.endpoint import Endpoint  # noqa: F401
+from app.models.schema import Schema  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
 # Override the sqlalchemy.url with the value from settings
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+config.set_main_option("sqlalchemy.url", settings.postgres_url.strip())
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -70,6 +70,9 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+    # Print the database URL for debugging
+    print(f"Database URL: {config.get_main_option('sqlalchemy.url')}")
+
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",

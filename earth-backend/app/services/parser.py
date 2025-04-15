@@ -2,7 +2,7 @@
 
 import hashlib
 import json
-from typing import Any, Union
+from typing import Any
 
 import yaml
 from jsonref import JsonRef
@@ -25,7 +25,7 @@ class APISpecParser:
         """
         self.fail_fast = fail_fast
 
-    def parse(self, content: Union[bytes, str]) -> dict[str, Any]:
+    def parse(self, content: bytes | str) -> dict[str, Any]:
         """Parse API specification content and return the parsed document.
 
         Args:
@@ -309,7 +309,7 @@ class APISpecParser:
         # Generate a hash for a shorter ID
         return hashlib.md5(id_string.encode()).hexdigest()[:12]  # noqa: S324
 
-    def extract_schema_metadata(self, spec: dict[str, Any]) -> tuple[str, str, str]:
+    def extract_schema_metadata(self, spec: dict[str, Any]) -> tuple[str, str]:
         """Extract title, version, and generate a checksum from the API spec.
 
         Args:

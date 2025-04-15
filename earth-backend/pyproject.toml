@@ -37,17 +37,13 @@ dependencies = [
     # Core API
     "fastapi>=0.109.0",
     "uvicorn[standard]>=0.27.0",
-    "pydantic>=2.5.0",
+    "pydantic>=2.11.3",
     "pydantic-settings>=2.0.0",
     # Database & ORM
-    "sqlmodel>=0.0.14",
-    "psycopg[binary]>=3.1.0", # Use psycopg[binary] or psycopg depending on needs
+    "sqlmodel>=0.0.24",
+    "psycopg[binary]>=3.1.0",       # Use psycopg[binary] or psycopg depending on needs
     "alembic>=1.13.0",
-    # Vector DB & Embeddings
-    "chromadb>=0.4.22",
-    "qdrant-client>=1.7.0",
     "sentence-transformers>=2.3.0", # Check specific model compatibility if needed
-    "torch>=2.0.0", # CPU version often sufficient, check if GPU needed
     # Task Queue
     "celery>=5.3.0",
     "redis>=5.0.0",
@@ -58,8 +54,8 @@ dependencies = [
     # Utilities
     "joblib>=1.3.0",
     "python-jose[cryptography]>=3.3.0", # For JWT Auth
-    "passlib[bcrypt]>=1.7.4", # For password hashing if needed
-    "python-multipart>=0.0.7", # For file uploads
+    "passlib[bcrypt]>=1.7.4",           # For password hashing if needed
+    "python-multipart>=0.0.7",          # For file uploads
     # Observability (Optional, based on PRD)
     # "opentelemetry-api",
     # "opentelemetry-sdk",
@@ -69,6 +65,11 @@ dependencies = [
     # "opentelemetry-instrumentation-sqlalchemy",
     # "opentelemetry-instrumentation-celery",
     # "prometheus-fastapi-instrumentator",
+    "pgvector>=0.4.0",
+    "sqlalchemy==2.0.40",
+    "hf-xet>=1.0.3",
+    "mcp[cli]>=1.6.0",
+    "fastapi-mcp>=0.2.0",
 ]
 
 [project.optional-dependencies]
@@ -95,12 +96,12 @@ select = ["ALL"]
 
 # Exclude rules that conflict with each other or are too strict
 ignore = [
-    "D203",  # Conflicts with D211
-    "D212",  # Conflicts with D213
-    "E501",  # Line length handled by formatter
-    "ANN001", # Missing type annotation for `self` in method
-    "ANN002", # Missing type annotation for `cls` in classmethod
-    "COM812", # Missing trailing comma
+    "D203",    # Conflicts with D211
+    "D212",    # Conflicts with D213
+    "E501",    # Line length handled by formatter
+    "ANN001",  # Missing type annotation for `self` in method
+    "ANN002",  # Missing type annotation for `cls` in classmethod
+    "COM812",  # Missing trailing comma
     "G004",
     "ANN",
     "D100",
@@ -115,7 +116,7 @@ ignore = [
     "N805",
     "PLR0913",
     "FBT",
-    "RUF010"
+    "RUF010",
 ]
 
 # Allow autofix for all enabled rules (when `--fix` is passed)
@@ -164,10 +165,10 @@ known-first-party = ["app"]
 convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401"]  # Unused imports
+"__init__.py" = ["F401"] # Unused imports
 "tests/**/*.py" = [
-    "S101",   # Use of assert
-    "ARG001", # Unused function argument
+    "S101",    # Use of assert
+    "ARG001",  # Unused function argument
     "PLR2004", # Magic value used in comparison
 ]
 "app/db/migrations/**/*.py" = [
@@ -177,7 +178,6 @@ convention = "google"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
-asyncio_mode = "auto"
 # addopts = "-ra -q --cov=app --cov-report=term-missing" # Enable later
 
 [tool.hatch.build.targets.sdist]

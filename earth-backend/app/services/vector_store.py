@@ -1,25 +1,21 @@
 """Vector store service for storing and retrieving vector embeddings.
 
-This module provides an abstract interface for vector stores and implementations
-for different backends (Chroma, Qdrant).
+This module provides an abstract interface for vector stores and an implementation
+for PostgreSQL with the pgvector extension.
 """
 
-import os
+import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import lru_cache
-from pathlib import Path
 from typing import Any
 
-import chromadb
-from chromadb.config import Settings as ChromaSettings
-from qdrant_client import QdrantClient
-from qdrant_client.http import models as qdrant_models
-from qdrant_client.http.exceptions import UnexpectedResponse
-from qdrant_client.http.models import Distance, VectorParams
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.core.logging import get_logger
+from app.db.session import get_session_context
+from app.models.endpoint import Endpoint
 
 logger = get_logger(__name__)
 
@@ -102,326 +98,95 @@ class VectorStore(ABC):
         """
 
 
-class ChromaVectorStore(VectorStore):
-    """Vector store implementation using Chroma."""
+class PostgresVectorStore(VectorStore):
+    """Vector store implementation using PostgreSQL with pgvector extension.
 
-    def __init__(
-        self,
-        collection_name: str,
-        persist_directory: str,
-        embedding_dimension: int = 384,  # Default for all-MiniLM-L6-v2
-    ):
-        """Initialize the Chroma vector store.
-
-        Args:
-            collection_name: Name of the collection to use
-            persist_directory: Directory to persist the database
-            embedding_dimension: Dimension of the embeddings
-        """
-        self.collection_name = collection_name
-        self.persist_directory = persist_directory
-        self.embedding_dimension = embedding_dimension
-
-        # Create the persist directory if it doesn't exist
-        if not Path(persist_directory).exists():
-            Path(persist_directory).mkdir(parents=True, exist_ok=True)
-
-        # Initialize Chroma client
-        if settings.CHROMA_MODE == "http":
-            # HTTP client mode (for client/server setup)
-            self.client = chromadb.HttpClient(
-                host=settings.CHROMA_HOST,
-                port=settings.CHROMA_PORT,
-                settings=ChromaSettings(
-                    anonymized_telemetry=False,
-                ),
-            )
-        else:
-            # Persistent client mode (local)
-            self.client = chromadb.PersistentClient(
-                path=persist_directory,
-                settings=ChromaSettings(
-                    anonymized_telemetry=False,
-                ),
-            )
-
-        # Get or create the collection
-        try:
-            self.collection = self.client.get_collection(name=collection_name)
-            logger.info(f"Using existing Chroma collection: {collection_name}")
-        except ValueError:
-            # Collection doesn't exist, create it
-            logger.info(f"Creating new Chroma collection: {collection_name}")
-            self.collection = self.client.create_collection(
-                name=collection_name,
-                metadata={"dimension": embedding_dimension},
-            )
-
-    def add(self, vector_id: str, embedding: list[float], metadata: dict[str, Any]) -> None:
-        """Add a vector to the store."""
-        self.collection.add(
-            ids=[vector_id],
-            embeddings=[embedding],
-            metadatas=[metadata],
-        )
-
-    def update(self, vector_id: str, embedding: list[float], metadata: dict[str, Any]) -> None:
-        """Update a vector in the store."""
-        # Chroma's upsert method will add or update
-        self.collection.upsert(
-            ids=[vector_id],
-            embeddings=[embedding],
-            metadatas=[metadata],
-        )
-
-    def delete(self, vector_id: str) -> None:
-        """Delete a vector from the store."""
-        self.collection.delete(ids=[vector_id])
-
-    def similarity_search(
-        self,
-        query_embedding: list[float],
-        k: int = 10,
-        filters: dict[str, Any] | None = None,
-    ) -> list[SearchResult]:
-        """Perform a similarity search."""
-        # Convert filters to Chroma where clause if provided
-        where = filters if filters else None
-
-        # Perform the search
-        results = self.collection.query(
-            query_embeddings=[query_embedding],
-            n_results=k,
-            where=where,
-            include=["metadatas", "distances"],
-        )
-
-        # Format the results
-        search_results = []
-        if results["ids"] and results["ids"][0]:
-            for i, id_val in enumerate(results["ids"][0]):
-                metadata = results["metadatas"][0][i] if results["metadatas"] else {}
-                distance = results["distances"][0][i] if results["distances"] else 1.0
-
-                # Convert distance to similarity score (1.0 is perfect match)
-                score = 1.0 - min(distance, 1.0)
-
-                search_results.append(
-                    SearchResult(
-                        id=id_val,
-                        score=score,
-                        metadata=metadata,
-                    ),
-                )
-
-        return search_results
-
-    def get(self, vector_id: str) -> SearchResult | None:
-        """Get a vector by ID."""
-        try:
-            result = self.collection.get(
-                ids=[vector_id],
-                include=["metadatas", "embeddings"],
-            )
-
-            if not result["ids"]:
-                return None
-
-            return SearchResult(
-                id=result["ids"][0],
-                score=1.0,  # Perfect match for direct lookup
-                metadata=result["metadatas"][0] if result["metadatas"] else {},
-            )
-        except Exception:
-            logger.exception(f"Error getting vector with ID {vector_id}")
-            return None
-
-    def count(self) -> int:
-        """Get the number of vectors in the store."""
-        return self.collection.count()
-
-
-class QdrantVectorStore(VectorStore):
-    """Vector store implementation using Qdrant.
-
-    Optimized for performance with connection pooling, batch operations,
-    and efficient filtering.
+    This implementation stores vectors directly in the PostgreSQL database along with
+    the endpoint data, eliminating the need for a separate vector database.
     """
 
     def __init__(
         self,
-        collection_name: str = settings.QDRANT_COLLECTION_NAME,
         embedding_dimension: int = 384,  # Default for all-MiniLM-L6-v2
-        distance: str = "Cosine",  # Cosine, Euclid, or Dot
     ):
-        """Initialize the Qdrant vector store.
+        """Initialize the PostgreSQL vector store.
 
         Args:
-            collection_name: Name of the collection to use
             embedding_dimension: Dimension of the embeddings
-            distance: Distance metric to use (Cosine, Euclid, or Dot)
         """
-        self.collection_name = collection_name
         self.embedding_dimension = embedding_dimension
+        logger.info(f"Using PostgreSQL pgvector store with dimension {embedding_dimension}")
 
-        # Map string distance to Qdrant Distance enum
-        distance_map = {
-            "cosine": Distance.COSINE,
-            "euclid": Distance.EUCLID,
-            "dot": Distance.DOT,
-        }
-        self.distance = distance_map.get(distance.lower(), Distance.COSINE)
-        if settings.QDRANT_URL:
-            self.client = QdrantClient(
-                url=settings.QDRANT_URL, api_key=settings.QDRANT_API_KEY or None
-            )
-        else:  # noqa: PLR5501
-            # Initialize Qdrant client with connection pooling for better performance
-            if settings.QDRANT_PREFER_GRPC:
-                # Use gRPC for better performance when available
-                self.client = QdrantClient(
-                    host=settings.QDRANT_HOST,
-                    port=settings.QDRANT_GRPC_PORT,
-                    api_key=settings.QDRANT_API_KEY or None,
-                    https=settings.QDRANT_HTTPS,
-                    prefer_grpc=True,
-                    timeout=10.0,  # Increased timeout for reliability
-                )
-                logger.info("Using Qdrant with gRPC transport")
-            else:
-                # Use HTTP otherwise
-                self.client = QdrantClient(
-                    host=settings.QDRANT_HOST,
-                    port=settings.QDRANT_PORT,
-                    api_key=settings.QDRANT_API_KEY or None,
-                    https=settings.QDRANT_HTTPS,
-                    timeout=10.0,  # Increased timeout for reliability
-                )
-                logger.info("Using Qdrant with HTTP transport")
+    def _update_vector(
+        self,
+        session: Session,
+        vector_id: str,
+        embedding: list[float],
+    ) -> None:
+        """Update the vector embedding for an endpoint.
 
-        # Get or create the collection
-        try:
-            _ = self.client.get_collection(collection_name=collection_name)
-            logger.info(f"Using existing Qdrant collection: {collection_name}")
-        except (ValueError, UnexpectedResponse):
-            # Collection doesn't exist, create it
-            logger.info(f"Creating new Qdrant collection: {collection_name}")
-            self.client.create_collection(
-                collection_name=collection_name,
-                vectors_config=VectorParams(
-                    size=embedding_dimension,
-                    distance=self.distance,
-                ),
-                # Add optimized index parameters
-                optimizers_config=qdrant_models.OptimizersConfigDiff(
-                    indexing_threshold=20000,  # Larger for batch indexing
-                    memmap_threshold=100000,  # Use memory mapping for large collections
-                ),
-                # Add vector sparse index for faster search
-                hnsw_config=qdrant_models.HnswConfigDiff(
-                    m=16,  # Number of bidirectional links (higher = better recall, more memory)
-                    ef_construct=128,  # Size of the dynamic list for nearest neighbors (higher = better recall)
-                    full_scan_threshold=10000,  # Threshold for full scan vs index
-                    on_disk=True,  # Store index on disk for larger datasets
-                ),
-            )
+        Args:
+            session: SQLAlchemy session
+            vector_id: UUID of the endpoint
+            embedding: Vector embedding
+        """
+        # Store embedding as JSON string temporarily for migration
+        embedding_json = json.dumps(embedding)
+
+        # Convert embedding to vector format
+        vector_str = ",".join(map(str, embedding))
+        sql = text(
+            """
+            UPDATE endpoints
+            SET
+                embedding = :embedding_json,
+                embedding_vector = :vector::vector
+            WHERE id = :id
+            """
+        )
+
+        session.execute(
+            sql,
+            {
+                "id": vector_id,
+                "embedding_json": embedding_json,
+                "vector": f"[{vector_str}]",
+            },
+        )
 
     def add(self, vector_id: str, embedding: list[float], metadata: dict[str, Any]) -> None:
         """Add a vector to the store."""
-        self.client.upsert(
-            collection_name=self.collection_name,
-            points=[
-                qdrant_models.PointStruct(
-                    id=vector_id,
-                    vector=embedding,
-                    payload=metadata,
-                )
-            ],
-        )
+        with get_session_context() as session:
+            # Check if the endpoint exists
+            endpoint = session.get(Endpoint, vector_id)
+            if not endpoint:
+                logger.warning(f"Endpoint with ID {vector_id} not found, cannot add vector")
+                return
+
+            # Update the vector
+            self._update_vector(session, vector_id, embedding)
+            session.commit()
 
     def update(self, vector_id: str, embedding: list[float], metadata: dict[str, Any]) -> None:
         """Update a vector in the store."""
-        # Qdrant's upsert method will add or update
-        self.client.upsert(
-            collection_name=self.collection_name,
-            points=[
-                qdrant_models.PointStruct(
-                    id=vector_id,
-                    vector=embedding,
-                    payload=metadata,
-                )
-            ],
-        )
+        # Same implementation as add since we're using upsert semantics
+        self.add(vector_id, embedding, metadata)
 
     def delete(self, vector_id: str) -> None:
         """Delete a vector from the store."""
-        self.client.delete(
-            collection_name=self.collection_name,
-            points_selector=qdrant_models.PointIdsList(
-                points=[vector_id],
-            ),
-        )
-
-    def _convert_filters(self, filters: dict[str, Any] | None) -> qdrant_models.Filter | None:  # noqa: C901
-        """Convert dictionary filters to Qdrant filter format.
-
-        Args:
-            filters: Dictionary of filters
-
-        Returns:
-            Qdrant filter object or None if no filters
-        """
-        if not filters:
-            return None
-
-        # Build filter conditions
-        conditions = []
-        for key, value in filters.items():
-            if not value:
-                continue
-            if isinstance(value, list):
-                # Handle list values (any match)
-                conditions.append(
-                    qdrant_models.FieldCondition(
-                        key=key,
-                        match=qdrant_models.MatchAny(any=value),
-                    )
-                )
-            elif isinstance(value, dict):
-                # Handle range queries with operators
-                range_operators = {}
-                for op, val in value.items():
-                    if op == "gt":
-                        range_operators["gt"] = val
-                    elif op == "gte":
-                        range_operators["gte"] = val
-                    elif op == "lt":
-                        range_operators["lt"] = val
-                    elif op == "lte":
-                        range_operators["lte"] = val
-
-                if range_operators:
-                    conditions.append(
-                        qdrant_models.FieldCondition(
-                            key=key,
-                            range=qdrant_models.Range(**range_operators),
-                        )
-                    )
-            else:
-                # Handle exact match
-                conditions.append(
-                    qdrant_models.FieldCondition(
-                        key=key,
-                        match=qdrant_models.MatchValue(value=value),
-                    )
-                )
-
-        if conditions:
-            return qdrant_models.Filter(
-                must=conditions,
+        with get_session_context() as session:
+            # We don't actually delete the endpoint, just null out the vector
+            sql = text(
+                """
+                UPDATE endpoints
+                SET
+                    embedding = NULL,
+                    embedding_vector = NULL
+                WHERE id = :id
+                """
             )
-
-        return None
+            session.execute(sql, {"id": vector_id})
+            session.commit()
 
     def similarity_search(
         self,
@@ -431,63 +196,150 @@ class QdrantVectorStore(VectorStore):
     ) -> list[SearchResult]:
         """Perform a similarity search.
 
-        Optimized to use Qdrant's efficient search capabilities with proper filtering.
+        Uses cosine similarity with pgvector.
         """
-        # Convert filters to Qdrant format if provided
-        qdrant_filter = self._convert_filters(filters)
+        with get_session_context() as session:
+            # Convert embedding to vector format
+            vector_str = ",".join(map(str, query_embedding))
 
-        # Perform the search with optimized parameters
-        search_params = qdrant_models.SearchParams(
-            hnsw_ef=128,  # Controls recall vs performance tradeoff (higher = better recall)
-            exact=False,  # Set to True for exact search (slower but more accurate)
-        )
+            # Start building the query
+            sql = """
+                SELECT
+                    e.id,
+                    e.schema_id,
+                    e.path,
+                    e.method,
+                    e.operation_id,
+                    e.summary,
+                    e.description,
+                    e.tags,
+                    e.spec,
+                    s.title as schema_title,
+                    s.version as schema_version,
+                    1 - (embedding_vector <=> :vector::vector) as similarity
+                FROM 
+                    endpoints e
+                JOIN
+                    schemas s ON e.schema_id = s.id
+                WHERE
+                    e.deleted_at IS NULL AND
+                    e.embedding_vector IS NOT NULL
+            """
 
-        results = self.client.search(
-            collection_name=self.collection_name,
-            query_vector=query_embedding,
-            limit=k,
-            query_filter=qdrant_filter,
-            with_payload=True,
-            search_params=search_params,
-        )
+            # Add filters if provided
+            params = {"vector": f"[{vector_str}]"}
+            if filters:
+                conditions = []
+                for key, value in filters.items():
+                    if key == "schema_id" and value:
+                        conditions.append("e.schema_id = :schema_id")
+                        params["schema_id"] = value
+                    # Add more filters as needed
 
-        # Format the results
-        return [
-            SearchResult(
-                id=str(result.id),
-                score=float(result.score),
-                metadata=result.payload or {},
-            )
-            for result in results
-        ]
+                if conditions:
+                    sql += " AND " + " AND ".join(conditions)
+
+            # Add order by and limit
+            sql += """
+                ORDER BY similarity DESC
+                LIMIT :limit
+            """
+            params["limit"] = k
+
+            # Execute the query
+            results = session.execute(text(sql), params).fetchall()
+
+            # Format the results
+            search_results = []
+            for row in results:
+                # Convert row to dict
+                row_dict = {col: getattr(row, col) for col in row.keys()}
+
+                # Extract metadata
+                metadata = {
+                    "schema_id": str(row.schema_id),
+                    "path": row.path,
+                    "method": row.method,
+                    "operation_id": row.operation_id,
+                    "summary": row.summary,
+                    "description": row.description,
+                    "tags": row.tags,
+                    "schema_title": row.schema_title,
+                    "schema_version": row.schema_version,
+                    "spec": row.spec,
+                }
+
+                search_results.append(
+                    SearchResult(
+                        id=str(row.id),
+                        score=float(row.similarity),
+                        metadata=metadata,
+                    )
+                )
+
+            return search_results
 
     def get(self, vector_id: str) -> SearchResult | None:
         """Get a vector by ID."""
-        try:
-            result = self.client.retrieve(
-                collection_name=self.collection_name,
-                ids=[vector_id],
-                with_payload=True,
-                with_vectors=True,
-            )
+        with get_session_context() as session:
+            # Query the endpoint and its vector
+            sql = """
+                SELECT 
+                    e.id,
+                    e.schema_id,
+                    e.path,
+                    e.method,
+                    e.operation_id,
+                    e.summary,
+                    e.description,
+                    e.tags,
+                    e.spec,
+                    s.title as schema_title,
+                    s.version as schema_version,
+                    e.embedding_vector
+                FROM 
+                    endpoints e
+                JOIN
+                    schemas s ON e.schema_id = s.id
+                WHERE
+                    e.id = :id
+            """
+
+            result = session.execute(text(sql), {"id": vector_id}).first()
 
             if not result:
                 return None
 
-            point = result[0]
+            # Convert row to dict
+            row_dict = {col: getattr(result, col) for col in result.keys()}
+
+            # Extract metadata
+            metadata = {
+                "schema_id": str(result.schema_id),
+                "path": result.path,
+                "method": result.method,
+                "operation_id": result.operation_id,
+                "summary": result.summary,
+                "description": result.description,
+                "tags": result.tags,
+                "schema_title": result.schema_title,
+                "schema_version": result.schema_version,
+                "spec": result.spec,
+            }
+
             return SearchResult(
-                id=str(point.id),
+                id=str(result.id),
                 score=1.0,  # Perfect match for direct lookup
-                metadata=point.payload or {},
+                metadata=metadata,
             )
-        except Exception:
-            logger.exception(f"Error getting vector with ID {vector_id}")
-            return None
 
     def count(self) -> int:
         """Get the number of vectors in the store."""
-        collection_info = self.client.get_collection(collection_name=self.collection_name)
-        return collection_info.vectors_count
+        with get_session_context() as session:
+            count = session.execute(
+                text("SELECT COUNT(*) FROM endpoints WHERE embedding_vector IS NOT NULL")
+            ).scalar()
+            return count or 0
 
     def batch_add(
         self,
@@ -511,24 +363,20 @@ class QdrantVectorStore(VectorStore):
             error_msg = "Length of vector_ids, embeddings, and metadatas must be the same"
             raise ValueError(error_msg)
 
-        # Create point structs
-        points = [
-            qdrant_models.PointStruct(
-                id=vector_id,
-                vector=embedding,
-                payload=metadata,
-            )
-            for vector_id, embedding, metadata in zip(
-                vector_ids, embeddings, metadatas, strict=False
-            )
-        ]
+        with get_session_context() as session:
+            # Process in chunks to avoid overwhelming the database
+            chunk_size = 100
+            for i in range(0, len(vector_ids), chunk_size):
+                chunk_ids = vector_ids[i : i + chunk_size]
+                chunk_embeddings = embeddings[i : i + chunk_size]
 
-        # Use batch upsert for better performance
-        self.client.upsert(
-            collection_name=self.collection_name,
-            points=points,
-            wait=True,  # Wait for operation to complete
-        )
+                # Update vectors in batch
+                for j, vector_id in enumerate(chunk_ids):
+                    embedding = chunk_embeddings[j]
+                    self._update_vector(session, vector_id, embedding)
+
+                # Commit after each chunk
+                session.commit()
 
     def batch_delete(self, vector_ids: list[str]) -> None:
         """Delete multiple vectors from the store in a single batch operation.
@@ -539,13 +387,20 @@ class QdrantVectorStore(VectorStore):
         if not vector_ids:
             return
 
-        self.client.delete(
-            collection_name=self.collection_name,
-            points_selector=qdrant_models.PointIdsList(
-                points=vector_ids,
-            ),
-            wait=True,  # Wait for operation to complete
-        )
+        with get_session_context() as session:
+            # We don't actually delete the endpoints, just null out the vectors
+            placeholders = ", ".join(f"'{vid}'" for vid in vector_ids)
+            sql = text(
+                f"""
+                UPDATE endpoints 
+                SET 
+                    embedding = NULL,
+                    embedding_vector = NULL
+                WHERE id IN ({placeholders})
+                """
+            )
+            session.execute(sql)
+            session.commit()
 
 
 @lru_cache(maxsize=1)
@@ -553,20 +408,8 @@ def get_vector_store() -> VectorStore:
     """Get a singleton instance of the vector store.
 
     Returns:
-        VectorStore instance
+        VectorStore instance based on PostgreSQL's pgvector extension
     """
-    # Determine which vector store to use based on configuration
-    vector_store_type = os.environ.get("VECTOR_STORE_TYPE", "qdrant").lower()
-
-    if vector_store_type == "qdrant":
-        try:
-            return QdrantVectorStore()
-        except Exception:
-            logger.exception("Failed to initialize Qdrant vector store")
-            logger.warning("Falling back to Chroma vector store")
-            return ChromaVectorStore()
-    elif vector_store_type == "chroma":
-        return ChromaVectorStore()
-    else:
-        logger.warning(f"Unknown vector store type: {vector_store_type}, using Qdrant")
-        return QdrantVectorStore()
+    # We are now standardized on PostgreSQL vector store
+    logger.info("Using PostgreSQL pgvector for vector storage")
+    return PostgresVectorStore()

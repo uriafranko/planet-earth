@@ -14,9 +14,7 @@ from sqlmodel import Session, select
 from app.api.deps import TokenData, get_current_user, get_db
 from app.core.config import settings
 from app.core.logging import get_logger
-from app.models.endpoint import Endpoint
 from app.models.schema import Schema, SchemaRead
-from app.services.vector_store import get_vector_store
 from app.tasks.schemas import enqueue_schema_processing
 
 logger = get_logger(__name__)
@@ -150,26 +148,6 @@ async def delete_schema(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Schema with ID {schema_id} not found.",
         )
-
-    # Get all endpoints for this schema to clean up vector store
-    endpoints = db.exec(select(Endpoint).where(Endpoint.schema_id == schema_id)).all()
-
-    # Get vector store to clean up embeddings
-    vector_store = get_vector_store()
-
-    # Delete all vectors associated with this schema's endpoints
-    for endpoint in endpoints:
-        try:
-            vector_store.delete(vector_id=str(endpoint.id))
-            logger.debug(
-                f"Deleted vector for endpoint: {endpoint.path} {endpoint.method}",
-                extra={"endpoint_id": str(endpoint.id)},
-            )
-        except Exception as e:
-            logger.warning(
-                f"Failed to delete vector for endpoint: {endpoint.path} {endpoint.method}",
-                extra={"endpoint_id": str(endpoint.id), "error": str(e)},
-            )
 
     # Note: due to CASCADE DELETE in the DB, this will also delete all endpoints
     db.delete(schema)

@@ -60,13 +60,33 @@ class Embedder:
         self.device = device
         logger.info(f"Using device: {self.device} for embeddings")
 
-        # Load the model
-        self.model = SentenceTransformer(model_name, device=device)
-
         # Create cache directory if it doesn't exist
         cache_path = Path(cache_dir)
         if not cache_path.exists():
             cache_path.mkdir(parents=True)
+
+        # Define the local model path
+        model_local_path = Path(cache_dir) / model_name.replace('/', '_')
+
+        # First try to load from the local saved model
+        if model_local_path.exists():
+            try:
+                logger.info(f"Loading model from local cache: {model_local_path}")
+                self.model = SentenceTransformer(str(model_local_path), device=device)
+                logger.info("Successfully loaded model from local cache")
+            except Exception as e:
+                logger.warning(f"Failed to load model from local cache: {e}. Will download from hub.")
+                self.model = SentenceTransformer(model_name, device=device, cache_folder=cache_dir)
+                # Save the model after downloading
+                logger.info(f"Saving model to: {model_local_path}")
+                self.model.save(str(model_local_path))
+        else:
+            # Model doesn't exist locally, download it
+            logger.info(f"Model not found in local cache, downloading: {model_name}")
+            self.model = SentenceTransformer(model_name, device=device, cache_folder=cache_dir)
+            # Save the model for future use
+            logger.info(f"Saving model to: {model_local_path}")
+            self.model.save(str(model_local_path))
 
         # Initialize memory cache
         self._cache = {}
@@ -78,7 +98,7 @@ class Embedder:
         self._load_cache()
 
         # Log model info
-        self.embedding_dimension = self.model.get_sentence_embedding_dimension()
+        self.embedding_dimension = self.model.get_sentence_embedding_dimension() or 0
         logger.info(
             f"Initialized embedder with model: {model_name}",
             extra={
@@ -153,8 +173,7 @@ class Embedder:
                 uncached_indices.append(i)
 
         # Prepare result list with cached embeddings
-        result = [self._cache.get(text, None) for text in texts]
-
+        result = []
         # If there are uncached texts, embed them
         if uncached_texts:
             # Generate embeddings for uncached texts
@@ -166,13 +185,8 @@ class Embedder:
 
             # Update results and cache
             for i, idx in enumerate(uncached_indices):
-                embedding_list = embeddings[i].tolist()
+                embedding_list: list[float] = embeddings[i].tolist()
                 result[idx] = embedding_list
-                self._cache[uncached_texts[i]] = embedding_list
-
-            # Save cache if we've added a significant number of new embeddings
-            if len(uncached_texts) > PROGRESS_BAR_THRESHOLD:
-                self._save_cache()
 
         return result
 
@@ -193,20 +207,8 @@ class Embedder:
         """Get the dimension of the embeddings produced by this model."""
         return self.embedding_dimension
 
-    def embed_endpoint(self, service_name: str, endpoint: Endpoint) -> list[float]:
-        """Embed an endpoint's vector data.
 
-        Args:
-            service_name: Name of the service the endpoint belongs to
-            endpoint: Endpoint to embed
-
-        Returns:
-            List of embedding values (vector)
-        """
-        text = f"{service_name} {endpoint.summary or endpoint.description} {', '.join(endpoint.tags)} {endpoint.path}"
-        return self.embed_text(text)
-
-@lru_cache(maxsize=1)
+@lru_cache(maxsize=1000)
 def get_embedder() -> Embedder:
     """Get a singleton instance of the Embedder.
 
@@ -214,3 +216,29 @@ def get_embedder() -> Embedder:
         Embedder instance
     """
     return Embedder()
+
+def embed_endpoint(
+    service_name: str | None,
+    endpoint_summary: str | None,
+    endpoint_description: str | None,
+    endpoint_tags: list[str] | str | None,
+    endpoint_path: str | None,
+) -> list[float]:
+    """Embed an endpoint's vector data.
+
+    Args:
+        service_name: Name of the service the endpoint belongs to
+        endpoint_summary: Summary of the endpoint
+        endpoint_description: Description of the endpoint
+        endpoint_tags: Tags associated with the endpoint
+        endpoint_path: Path of the endpoint
+
+    Returns:
+        List of embedding values (vector)
+    """
+    if isinstance(endpoint_tags, str):
+        endpoint_tags = endpoint_tags.split(",")
+    text = f"{service_name} - {endpoint_summary or endpoint_description} {', '.join(endpoint_tags) if endpoint_tags else ''} {endpoint_path}"
+
+    logger.debug(f"Embedding text: {text}")
+    return get_embedder().embed_text(text)

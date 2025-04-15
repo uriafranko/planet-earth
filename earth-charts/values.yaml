@@ -1,0 +1,62 @@
+# values.yaml
+# Configure Postgres. Set enabled: false and provide a url to use your own Postgres instance.
+postgres:
+  enabled: true  # Set to false to use your own Postgres (BYO mode)
+  image: "pgvector/pgvector:pg17"
+  # url: ""        # Required if enabled: false. Example: "postgresql://user:pass@host:5432/db"
+  username: "postgres"  # Used only if enabled: true
+  password: "secret"    # Used only if enabled: true. In production, use a Kubernetes Secret!
+  database: "planet_earth_db"  # Used only if enabled: true
+  storageSize: "10Gi"
+
+# Configure Redis. Set enabled: false and provide a url to use your own Redis instance.
+redis:
+  enabled: true  # Set to false to use your own Redis (BYO mode)
+  image: "redis:7"
+  # url: ""        # Required if enabled: false. Example: "redis://:password@host:6379/0"
+  password: "redispassword"  # Used only if enabled: true. In production, use a Kubernetes Secret!
+
+backend:
+  image: "<your-backend-image>"
+  replicas: 1
+  logLevel: "DEBUG"
+  service:
+    port: 8000
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "128Mi"
+    limits:
+      cpu: "250m"
+      memory: "512Mi"
+
+celery:
+  image: "<your-backend-image>"
+  replicas: 1
+  logLevel: "DEBUG"
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "128Mi"
+    limits:
+      cpu: "250m"
+      memory: "512Mi"
+
+# Resource requests/limits for Postgres and Redis (used only if enabled: true)
+postgresResources:
+  requests:
+    cpu: "50m"
+    memory: "128Mi"
+  limits:
+    cpu: "250m"
+    memory: "512Mi"
+
+redisResources:
+  requests:
+    cpu: "20m"
+    memory: "64Mi"
+  limits:
+    cpu: "100m"
+    memory: "256Mi"
+
+# NOTE: For production, use Kubernetes Secrets for all passwords!

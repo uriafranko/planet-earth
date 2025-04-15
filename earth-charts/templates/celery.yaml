@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery
+spec:
+  replicas: {{ .Values.celery.replicas }}
+  selector:
+    matchLabels:
+      app: celery
+  template:
+    metadata:
+      labels:
+        app: celery
+    spec:
+      containers:
+        - name: celery
+          image: "{{ .Values.celery.image }}"
+          env:
+            - name: DATABASE_URL
+              value: {{ ternary (printf "postgresql+psycopg://%s:%s@postgres:5432/%s" .Values.postgres.username .Values.postgres.password .Values.postgres.database) .Values.postgres.url .Values.postgres.enabled | quote }}
+            - name: REDIS_URL
+              value: {{ ternary (printf "redis://:%s@redis:6379/0" .Values.redis.password) .Values.redis.url .Values.redis.enabled | quote }}
+            - name: LOG_LEVEL
+              value: "{{ .Values.celery.logLevel }}"
+          resources:
+            requests:
+              cpu: "{{ .Values.celery.resources.requests.cpu }}"
+              memory: "{{ .Values.celery.resources.requests.memory }}"
+            limits:
+              cpu: "{{ .Values.celery.resources.limits.cpu }}"
+              memory: "{{ .Values.celery.resources.limits.memory }}"

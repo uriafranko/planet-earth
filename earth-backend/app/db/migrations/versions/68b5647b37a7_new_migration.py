@@ -1,16 +1,17 @@
 """New migration
 
-Revision ID: a0cf29e0d972
-Revises:
-Create Date: 2025-04-08 14:02:18.604554
+Revision ID: 68b5647b37a7
+Revises: 
+Create Date: 2025-04-12 11:32:34.205725
 
 """
+import pgvector.sqlalchemy
 import sqlalchemy as sa
 import sqlmodel
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "a0cf29e0d972"
+revision = "68b5647b37a7"
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -25,16 +26,19 @@ def upgrade() -> None:
     sa.Column("title", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column("version", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column("checksum", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column("status", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.PrimaryKeyConstraint("id")
     )
     op.create_index(op.f("ix_schemas_checksum"), "schemas", ["checksum"], unique=True)
     op.create_index(op.f("ix_schemas_id"), "schemas", ["id"], unique=False)
+    op.create_index(op.f("ix_schemas_status"), "schemas", ["status"], unique=False)
     op.create_index(op.f("ix_schemas_title"), "schemas", ["title"], unique=False)
     op.create_index(op.f("ix_schemas_version"), "schemas", ["version"], unique=False)
     op.create_table("endpoints",
     sa.Column("id", sa.Uuid(), nullable=False),
     sa.Column("created_at", sa.DateTime(), server_default="now()", nullable=False),
     sa.Column("updated_at", sa.DateTime(), nullable=True),
+    sa.Column("embedding_vector", pgvector.sqlalchemy.vector.VECTOR(dim=384), nullable=True),
     sa.Column("schema_id", sa.Uuid(), nullable=False),
     sa.Column("path", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column("method", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
@@ -44,8 +48,7 @@ def upgrade() -> None:
     sa.Column("summary", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column("description", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column("tags", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-    sa.Column("parameters_hash", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-    sa.Column("response_hash", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column("spec", sa.JSON(), nullable=True),
     sa.ForeignKeyConstraint(["schema_id"], ["schemas.id"] ),
     sa.PrimaryKeyConstraint("id"),
     sa.UniqueConstraint("schema_id", "path", "method", name="ux_schema_path_method")
@@ -70,6 +73,7 @@ def downgrade() -> None:
     op.drop_table("endpoints")
     op.drop_index(op.f("ix_schemas_version"), table_name="schemas")
     op.drop_index(op.f("ix_schemas_title"), table_name="schemas")
+    op.drop_index(op.f("ix_schemas_status"), table_name="schemas")
     op.drop_index(op.f("ix_schemas_id"), table_name="schemas")
     op.drop_index(op.f("ix_schemas_checksum"), table_name="schemas")
     op.drop_table("schemas")

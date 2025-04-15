@@ -134,3 +134,5 @@ chroma_data/
 
 # Mac specific
 .DS_Store
+
+embedding_cache/
