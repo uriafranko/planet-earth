@@ -1,0 +1,46 @@
+{{- if .Values.earthMcp.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: earth-mcp
+spec:
+  replicas: {{ .Values.earthMcp.replicas }}
+  selector:
+    matchLabels:
+      app: earth-mcp
+  template:
+    metadata:
+      labels:
+        app: earth-mcp
+    spec:
+      containers:
+        - name: earth-mcp
+          image: "{{ .Values.earthMcp.image }}"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: {{ .Values.earthMcp.service.port }}
+          env:
+            - name: LOG_LEVEL
+              value: "{{ .Values.earthMcp.logLevel }}"
+          resources:
+            requests:
+              cpu: "{{ .Values.earthMcp.resources.requests.cpu }}"
+              memory: "{{ .Values.earthMcp.resources.requests.memory }}"
+            limits:
+              cpu: "{{ .Values.earthMcp.resources.limits.cpu }}"
+              memory: "{{ .Values.earthMcp.resources.limits.memory }}"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: earth-mcp-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.earthMcp.service.port }}
+      targetPort: {{ .Values.earthMcp.service.port }}
+      protocol: TCP
+      name: http
+  selector:
+    app: earth-mcp
+{{- end }}

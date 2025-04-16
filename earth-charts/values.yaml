@@ -42,6 +42,22 @@ celery:
       cpu: "250m"
       memory: "512Mi"
 
+# Configure earth-mcp. Set enabled: false to disable deployment.
+earthMcp:
+  enabled: false  # Set to true to deploy earth-mcp. If false, earth-mcp will not be deployed.
+  image: "<your-earth-mcp-image>"
+  replicas: 1
+  logLevel: "INFO"
+  service:
+    port: 3000
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "128Mi"
+    limits:
+      cpu: "250m"
+      memory: "512Mi"
+
 # Resource requests/limits for Postgres and Redis (used only if enabled: true)
 postgresResources:
   requests:
@@ -60,3 +76,4 @@ redisResources:
     memory: "256Mi"
 
 # NOTE: For production, use Kubernetes Secrets for all passwords!
+

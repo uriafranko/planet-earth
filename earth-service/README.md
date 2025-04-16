@@ -33,7 +33,7 @@ Based on the requirements outlined in `instructions.md`.
 1.  **Clone the repository:**
     ```bash
     git clone <your-repo-url>
-    cd earth-backend
+    cd earth-service
     ```
 
 2.  **Create a virtual environment (recommended):**

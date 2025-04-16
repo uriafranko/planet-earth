@@ -2,7 +2,7 @@
 
 <picture>
   <source srcset="assets/planet-logo.png" media="(prefers-color-scheme: dark)" alt="Planet Earth Logo">
-  <img src="assets/planet-logo.png" alt="Planet Earth Logo" width="300" height="300">
+  <img src="assets/planet-logo.png" alt="Planet Earth Logo" width="480" height="270">
 </picture>
 
 **Unlocking your internal APIs for AI — The missing bridge that transforms how AI tools discover and interact with your organization's hidden service ecosystem.**
@@ -81,7 +81,7 @@ The system works as follows:
 ```bash
 # Clone the repository
 git clone https://github.com/uriafranko/planet-earth.git
-cd planet-earth/earth-backend
+cd planet-earth/earth-service
 
 # Create .env file (copy from example)
 cp .env.example .env
@@ -131,7 +131,7 @@ Once connected, your AI IDE will be able to discover and use your internal APIs 
 
 ```
 planet-earth/
-├── earth-backend/        # FastAPI backend + Celery workers
+├── earth-service/        # FastAPI backend + Celery workers
 │   ├── app/              # Application code
 │   ├── tests/            # Backend tests
 │   ├── Dockerfile        # Backend Docker image
@@ -168,7 +168,7 @@ git clone https://github.com/uriafranko/planet-earth.git
 cd planet-earth
 
 # Backend development
-cd earth-backend
+cd earth-service
 make install
 pre-commit install
 
@@ -177,7 +177,7 @@ cd ../earth-frontend
 npm install
 
 # Start development servers
-cd ../earth-backend
+cd ../earth-service
 docker-compose -f compose.yaml up
 ```
 
@@ -185,7 +185,7 @@ docker-compose -f compose.yaml up
 
 ```bash
 # Backend tests
-cd earth-backend
+cd earth-service
 pytest
 
 # Frontend tests

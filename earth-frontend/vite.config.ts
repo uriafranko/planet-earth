@@ -36,7 +36,7 @@ export default defineConfig(({ mode }) => ({
       name: 'copy-build-to-backend',
       closeBundle: async () => {
         const outDir = path.resolve(__dirname, 'dist');
-        const targetDir = path.resolve(__dirname, '../earth-backend/app/ui');
+        const targetDir = path.resolve(__dirname, '../earth-service/app/ui');
         try {
           await copyDir(outDir, targetDir);
           console.log(`Copied build to ${targetDir}`);
