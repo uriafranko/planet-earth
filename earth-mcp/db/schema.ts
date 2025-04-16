@@ -12,5 +12,5 @@ export const endpoints = pgTable('endpoints', {
   description: text('description'),
   tags: text('tags'), // JSON string
   spec: jsonb('spec'),
-  embedding_vector: vector('embedding_vector', { dimensions: 384 }).notNull(),
+  embedding_vector: vector('embedding_vector', { dimensions: 512 }).notNull(),
 });

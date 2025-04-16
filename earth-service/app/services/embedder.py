@@ -53,7 +53,12 @@ class Embedder:
             if torch.cuda.is_available():
                 device = "cuda"
             elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-                device = "mps"
+                # MPS is not fork-safe and will crash in multiprocessing (e.g., Celery)
+                logger.warning(
+                    "MPS (Apple Silicon GPU) is available, but is not fork-safe and will crash in multiprocessing environments. "
+                    "Falling back to CPU. If you want to force GPU, set EMBEDDING_DEVICE to 'cuda' (if available)."
+                )
+                device = "cpu"
             else:
                 device = "cpu"
 
@@ -99,7 +104,7 @@ class Embedder:
 
         # Log model info
         self.embedding_dimension = self.model.get_sentence_embedding_dimension() or 0
-        logger.info(
+        logger.debug(
             f"Initialized embedder with model: {model_name}",
             extra={
                 "embedding_dimension": self.embedding_dimension,

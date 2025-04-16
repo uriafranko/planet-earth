@@ -38,15 +38,15 @@ dev:
 
 start:
 	@echo "Starting API server (production mode)..."
-	$(ACTIVATE)uvicorn app.main:app --host 0.0.0.0 --port 8000
+	uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 start-dev:
 	@echo "Starting API server with hot-reloading..."
-	$(ACTIVATE)uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+	uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 worker:
 	@echo "Starting Celery worker..."
-	$(ACTIVATE)python -m celery -A app.tasks.celery_app worker --loglevel=INFO
+	uv run celery -A app.tasks.celery_app worker --loglevel=INFO
 
 stop:
 	@echo "Stopping Docker Compose services..."

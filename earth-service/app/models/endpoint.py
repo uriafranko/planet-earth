@@ -8,6 +8,7 @@ from pgvector.sqlalchemy import Vector
 from sqlalchemy import JSON, Column, text
 from sqlmodel import Field, Relationship, SQLModel, UniqueConstraint
 
+from app.core.config import settings
 from app.models.base import BaseModel
 from app.models.schema import Schema
 
@@ -41,7 +42,7 @@ class Endpoint(BaseModel, table=True):
 
     # Vector embedding stored as a PostgreSQL vector
     # This is stored as a string temporarily during migration
-    embedding_vector: Any = Field(default=None, sa_column=Column(Vector(384)))
+    embedding_vector: Any = Field(default=None, sa_column=Column(Vector(settings.EMBEDDING_DIMENSION)))
 
     # This is the actual vector column that will be used after migration
     # Note: SQLModel doesn't support pgvector directly, so we'll access it through raw SQL
