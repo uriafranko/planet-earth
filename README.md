@@ -52,11 +52,10 @@ Planet Earth is an open-source platform that bridges the gap between modern AI-p
 
 Planet Earth follows a modern, microservices-based architecture:
 
-<img src="assets/diagram-flow.jpg" alt="Planet Earth Architecture" width="500">
-
 ### Flow Diagram
 
-_[A flow diagram will be inserted here showing the process flow described in the project documentation]_
+<img src="assets/diagram-flow.jpg" alt="Planet Earth Architecture" width="500">
+
 
 The system works as follows:
 

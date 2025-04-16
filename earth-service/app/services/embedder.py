@@ -145,7 +145,7 @@ class Embedder:
             return self._cache[text]
 
         # Generate embedding
-        embedding = self.model.encode(text, show_progress_bar=False)
+        embedding = self.model.encode(text, normalize_embeddings=True, show_progress_bar=False)
 
         # Convert to Python list for serialization
         embedding_list = embedding.tolist()
@@ -184,6 +184,7 @@ class Embedder:
             # Generate embeddings for uncached texts
             embeddings = self.model.encode(
                 uncached_texts,
+                normalize_embeddings=True,
                 batch_size=self.batch_size,
                 show_progress_bar=len(uncached_texts) > PROGRESS_BAR_THRESHOLD,
             )

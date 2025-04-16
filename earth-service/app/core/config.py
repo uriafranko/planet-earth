@@ -43,8 +43,8 @@ class Settings(BaseSettings):
     VECTOR_STORE_TYPE: str = "postgres"  # Options: postgres, qdrant, chroma
 
     # Embedding Service
-    EMBEDDING_MODEL_NAME: str = "jinaai/jina-embeddings-v2-small-en"
-    EMBEDDING_DIMENSION: int = 512
+    EMBEDDING_MODEL_NAME: str = "jinaai/jina-embeddings-v2-base-en"
+    EMBEDDING_DIMENSION: int = 768
     EMBEDDING_DEVICE: str = "auto"  # "auto", "cpu", "cuda", "mps"
     EMBEDDING_BATCH_SIZE: int = 64
     EMBEDDING_CACHE_DIR: str = "./embedding_cache"

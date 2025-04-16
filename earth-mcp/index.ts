@@ -11,7 +11,7 @@ import { db } from './db/client.js';
 import { endpoints } from './db/schema.js';
 import { cosineDistance, isNull, sql, gt, desc } from 'drizzle-orm';
 
-const MODEL_ID = 'jinaai/jina-embeddings-v2-small-en';
+const MODEL_ID = 'jinaai/jina-embeddings-v2-base-en';
 const CACHE_DIR = path.join(process.cwd(), '.cache', 'huggingface');
 
 // Ensure cache directory exists
