@@ -7,12 +7,14 @@ import path from 'path';
 import fs from 'fs';
 
 // Drizzle ORM imports
+import { v4 as uuidv4 } from 'uuid';
 import { db } from './db/client.js';
-import { endpoints } from './db/schema.js';
-import { cosineDistance, isNull, sql, gt, desc } from 'drizzle-orm';
+import { endpoints, audits, auditResults } from './db/schema.js';
+import { cosineDistance, sql, gt, desc } from 'drizzle-orm';
 
-const MODEL_ID = 'jinaai/jina-embeddings-v2-base-en';
+const MODEL_ID = 'BAAI/bge-base-en-v1.5';
 const CACHE_DIR = path.join(process.cwd(), '.cache', 'huggingface');
+const EMBEDDING_INSTRUCTIONS = 'Represent this sentence for searching relevant passages: ';
 
 // Ensure cache directory exists
 if (!fs.existsSync(CACHE_DIR)) {
@@ -55,12 +57,12 @@ async function initializeEmbeddingModel() {
 // Add the semantic search tool
 server.tool(
   'find_api_spec',
-  'Find any API endpoint documentation by service name and description.',
+  'Find any API endpoint documentation by description. Search query for API endpoint documentation - e.g. "Search Slack messages" or "Create a github repository". This will return a list of API endpoints that match the description.',
   {
-    query: z
+    api_description: z
       .string()
       .describe(
-        'Search query for API endpoint documentation - e.g. "Slack - Search messages in channels" or "GitHub - Create repository by name"'
+        'A brief description of the API endpoint goal to search for. For example, "Search Slack messages" or "Create a GitHub repository".'
       ),
     limit: z
       .number()
@@ -70,10 +72,10 @@ server.tool(
       .default(5)
       .describe('Maximum number of results to return - default: 5'),
   },
-  async ({ query, limit }) => {
+  async ({ api_description, limit }) => {
     try {
       // Generate embedding vector for the query
-      const vector = await getEmbedding(query);
+      const vector = await getEmbedding(EMBEDDING_INSTRUCTIONS + api_description);
       const similarity = sql<number>`1 - (${cosineDistance(endpoints.embedding_vector, vector)})`;
       // Perform similarity search using Drizzle ORM and pgvector
       const results = await db
@@ -90,13 +92,7 @@ server.tool(
           similarity: similarity,
         })
         .from(endpoints)
-        // .where(
-        //   and(
-        //     isNull(endpoints.deleted_at),
-        //     lte(cosineDistance(endpoints.embedding_vector, vector), 0.5)
-        //   )
-        // )
-        .where(gt(similarity, 0.4))
+        .where(gt(similarity, 0.5))
         .orderBy(desc(similarity))
         .limit(limit);
 
@@ -113,6 +109,46 @@ server.tool(
         similarity: endpoint.similarity,
         spec: endpoint.spec ?? null,
       }));
+
+      // --- AUDIT LOGGING ---
+      let auditId: string | null = null;
+      try {
+        // Insert audit record
+        const auditInsert = await db
+          .insert(audits)
+          .values({
+            id: uuidv4(),
+            query: api_description,
+            total_result_count: mapped.length,
+            created_at: new Date(),
+          })
+          .returning({ id: audits.id });
+        auditId = auditInsert[0]?.id ?? null;
+        // Insert auditResults for each endpoint
+        if (typeof auditId === 'string') {
+          const auditResultsToInsert = mapped.map((endpoint: any) => ({
+            id: uuidv4(),
+            created_at: new Date(),
+            audit_id: String(auditId),
+            schema_id: String(endpoint.schema_id),
+            endpoint_id: String(endpoint.id),
+            result_count: 1,
+          })) as {
+            id: string;
+            created_at: Date;
+            audit_id: string;
+            schema_id: string;
+            endpoint_id: string;
+            result_count: number;
+          }[];
+          if (auditResultsToInsert.length > 0) {
+            await db.insert(auditResults).values(auditResultsToInsert);
+          }
+        }
+      } catch (auditErr) {
+        console.error('Failed to save audit log:', auditErr);
+      }
+      // --- END AUDIT LOGGING ---
 
       return {
         content: [

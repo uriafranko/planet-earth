@@ -18,7 +18,3 @@ class BaseModel(SQLModel):
         nullable=False,
         sa_column_kwargs={"server_default": "now()"},
     )
-    updated_at: datetime | None = Field(
-        default=None,
-        nullable=True,
-    )

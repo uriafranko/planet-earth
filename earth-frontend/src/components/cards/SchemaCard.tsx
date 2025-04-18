@@ -4,7 +4,6 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button';
 import { Schema } from '@/types/models';
 import { formatDistanceToNow } from 'date-fns';
-import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
 interface SchemaCardProps {
@@ -24,8 +23,6 @@ const SchemaCard: React.FC<SchemaCardProps> = ({
   isReindexing = false,
   className,
 }) => {
-  const { canPerformAction } = useAuth();
-
   const timeAgo = formatDistanceToNow(new Date(schema.created_at), { addSuffix: true });
 
   return (
@@ -72,20 +69,18 @@ const SchemaCard: React.FC<SchemaCardProps> = ({
           </Button>
         )}
 
-        {canPerformAction('delete') && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="hover:bg-destructive/10 hover:text-destructive"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-          >
-            <Trash className="h-4 w-4 mr-1" />
-            Delete
-          </Button>
-        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="hover:bg-destructive/10 hover:text-destructive"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+        >
+          <Trash className="h-4 w-4 mr-1" />
+          Delete
+        </Button>
       </CardFooter>
     </Card>
   );

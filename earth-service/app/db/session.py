@@ -58,6 +58,6 @@ def install_extension():
     session = get_session()
     with get_session_context() as session:
         # Check if the extension is already installed
-        session.exec(text('CREATE EXTENSION IF NOT EXISTS vector'))
+        session.exec(text("CREATE EXTENSION IF NOT EXISTS vector"))
         # Removed the check for existing extension
         session.commit()

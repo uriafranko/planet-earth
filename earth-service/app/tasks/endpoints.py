@@ -4,7 +4,6 @@ This module defines Celery tasks for operations on API endpoints,
 such as reindexing in the vector database.
 """
 
-import datetime
 import uuid
 
 from sqlmodel import select
@@ -56,7 +55,6 @@ def reindex_endpoint(self, endpoint_id: str) -> dict:
                 logger.error(error_message)
                 raise ValueError(error_message)
 
-            # Update endpoint's updated_at timestamp
             endpoint.embedding_vector = embed_endpoint(
                 schema.title,
                 endpoint.summary,
@@ -64,7 +62,6 @@ def reindex_endpoint(self, endpoint_id: str) -> dict:
                 endpoint.tags,
                 endpoint.path,
             )
-            endpoint.updated_at = datetime.datetime.now(tz=datetime.UTC)
             session.add(endpoint)
             session.commit()
 

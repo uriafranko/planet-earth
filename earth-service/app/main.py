@@ -1,25 +1,30 @@
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException, Query
-from fastapi_mcp import FastApiMCP
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
-from sqlmodel import SQLModel
 from fastapi.staticfiles import StaticFiles
+from fastapi_mcp import FastApiMCP
+from sqlmodel import SQLModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-import app.models # noqa: ALL
-from app.db.session import engine, install_extension
-from app.api.v1 import management, schemas, search
+import app.models  # noqa: ALL
+from app.api.v1 import audit, management, schemas, search
 from app.core.config import settings
+from app.core.logging import get_logger
+from app.db.session import engine, install_extension
 from app.models.endpoint import EndpointSearchResult
 from app.services.embedder import get_embedder
-from app.mcp_app.mcp import mcp_app
 from app.services.vector_search import search_vector_by_text
+
+logger = get_logger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan context manager."""
+    logger.info("Starting up...")
     install_extension()
     SQLModel.metadata.create_all(engine)
     get_embedder()
@@ -50,6 +55,7 @@ app.add_middleware(
 app.include_router(schemas.router, prefix=settings.API_V1_STR)
 app.include_router(search.router, prefix=settings.API_V1_STR)
 app.include_router(management.router, prefix=settings.API_V1_STR)
+app.include_router(audit.router, prefix=settings.API_V1_STR)
 
 
 @app.get("/docs", include_in_schema=False)
@@ -76,8 +82,7 @@ class SPAStaticFiles(StaticFiles):
         except (HTTPException, StarletteHTTPException) as ex:
             if ex.status_code == 404:
                 return await super().get_response("index.html", scope)
-            else:
-                raise ex
+            raise ex
         return response
 
 
@@ -129,14 +134,14 @@ app.openapi = custom_openapi
     tags=["API Search"],
 )
 async def find_api_spec(
-    service_name: str = Query(..., description="The name of the service"),
-    description: str = Query(..., description="A brief description of the API endpoint to search for")) -> list[EndpointSearchResult]:
+    api_description: str = Query(..., description="A brief description of the API endpoint goal to search for")) -> list[EndpointSearchResult]:
     """
-    Find any API endpoint documentation by service name and description.
-    Search query for API endpoint documentation - e.g. "Slack - Search messages in channels" or "GitHub - Create repository by name"
+    Find any API endpoint documentation by description.
+    Search query for API endpoint documentation - e.g. "Search Slack messages" or "Create a github repository".
+    This will return a list of API endpoints that match the description.
     """
     return search_vector_by_text(
-            query_text=f"{service_name} - {description}",
+            query_text=f"{api_description}",
             k=5,
             similarity_threshold=0.4,
     )

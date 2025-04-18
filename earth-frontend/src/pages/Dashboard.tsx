@@ -1,33 +1,37 @@
-
 import React, { useState, useEffect } from 'react';
-import { Activity, AreaChart as AreaChartIcon, Database, FileJson, RefreshCcw, Search } from 'lucide-react';
+import {
+  Activity,
+  AreaChart as AreaChartIcon,
+  Database,
+  FileJson,
+  RefreshCcw,
+  Search,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/components/layout/AppLayout';
 import StatsCard from '@/components/cards/StatsCard';
 import { useToast } from '@/hooks/use-toast';
-import { endpointsApi, schemasApi, managementApi } from '@/services/api';
-import { useAuth } from '@/contexts/AuthContext';
+import { endpointsApi, schemasApi, managementApi, auditApi } from '@/services/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { 
-  ResponsiveContainer, 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  BarChart, 
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  BarChart,
   Bar,
   AreaChart,
-  Area
+  Area,
 } from 'recharts';
 
 const Dashboard: React.FC = () => {
   const { toast } = useToast();
-  const { user } = useAuth();
-  
+
   const [isReindexing, setIsReindexing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -36,17 +40,9 @@ const Dashboard: React.FC = () => {
     searchCount: 0,
   });
 
-  // Generate mock activity data for the charts
-  const activityData = Array.from({ length: 7 }, (_, i) => {
-    const date = new Date();
-    date.setDate(date.getDate() - 6 + i);
-    return {
-      date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      searches: Math.floor(Math.random() * 50) + 10,
-      endpoints: Math.floor(Math.random() * 20) + 5,
-      uploads: Math.floor(Math.random() * 10),
-    };
-  });
+  const [activityData, setActivityData] = useState<
+    { date: string; searches: number; endpoints: number; uploads: number }[]
+  >([]);
 
   // Load initial data
   useEffect(() => {
@@ -56,19 +52,40 @@ const Dashboard: React.FC = () => {
         // Get schemas count
         const schemasResponse = await schemasApi.getSchemas();
         const schemaCount = schemasResponse.data?.length || 0;
-        
+
         // Get endpoints count for the first schema (if exists)
         let endpointCount = 0;
         if (schemasResponse.data && schemasResponse.data.length > 0) {
           const endpointsResponse = await endpointsApi.getEndpoints(schemasResponse.data[0].id);
           endpointCount = endpointsResponse.data?.length || 0;
         }
-        
-        setStats({
-          schemaCount,
-          endpointCount,
-          searchCount: 120, // Mock data for search count
-        });
+        let searchCount = 0;
+
+        // Fetch audit logs by day for activity charts
+        const auditRes = await auditApi.getAuditLogsByDay();
+        if (auditRes.data) {
+          // Optionally, format date for chart display
+          setActivityData(
+            auditRes.data.map((item) => ({
+              date: new Date(item.day).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+              }),
+              searches: item.count,
+              endpoints: 0,
+              uploads: 0,
+            }))
+          );
+
+          searchCount = auditRes.data.reduce((acc, item) => acc + item.count, 0);
+          setStats({
+            schemaCount,
+            endpointCount,
+            searchCount, // Use the calculated searchCount
+          });
+        } else {
+          setActivityData([]);
+        }
       } catch (error) {
         console.error('Error loading dashboard stats:', error);
         toast({
@@ -76,11 +93,12 @@ const Dashboard: React.FC = () => {
           description: 'Failed to load dashboard statistics',
           variant: 'destructive',
         });
+        setActivityData([]);
       } finally {
         setIsLoading(false);
       }
     };
-    
+
     loadStats();
   }, [toast]);
 
@@ -110,9 +128,7 @@ const Dashboard: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-            <p className="text-muted-foreground">
-              Welcome back, {user?.name}! Here's an overview of your data.
-            </p>
+            <p className="text-muted-foreground">Welcome back! Here's an overview of your data.</p>
           </div>
           <Button onClick={handleReindex} disabled={isReindexing}>
             {isReindexing ? (
@@ -142,7 +158,7 @@ const Dashboard: React.FC = () => {
               value={stats.endpointCount}
               description="Indexed API endpoints"
               icon={<Database className="h-4 w-4" />}
-              trend={{ value: 12, label: "Increase from last month", direction: "up" }}
+              // trend={{ value: 12, label: 'Increase from last month', direction: 'up' }}
               variant="secondary"
             />
             <StatsCard
@@ -150,7 +166,7 @@ const Dashboard: React.FC = () => {
               value={stats.searchCount}
               description="Total queries processed"
               icon={<Search className="h-4 w-4" />}
-              trend={{ value: 8, label: "Increase from last month", direction: "up" }}
+              // trend={{ value: 8, label: 'Increase from last month', direction: 'up' }}
               variant="accent"
             />
           </div>
@@ -171,7 +187,7 @@ const Dashboard: React.FC = () => {
               Usage
             </TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="activity" className="pt-4">
             <Card className="glass-card">
               <CardHeader>
@@ -198,32 +214,20 @@ const Dashboard: React.FC = () => {
                         strokeWidth={2}
                         activeDot={{ r: 8 }}
                       />
-                      <Line
-                        type="monotone"
-                        dataKey="endpoints"
-                        stroke="#00c4cc"
-                        strokeWidth={2}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="uploads"
-                        stroke="#0a0118"
-                        strokeWidth={2}
-                      />
+                      <Line type="monotone" dataKey="endpoints" stroke="#00c4cc" strokeWidth={2} />
+                      <Line type="monotone" dataKey="uploads" stroke="#0a0118" strokeWidth={2} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
-          
+
           <TabsContent value="searches" className="pt-4">
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle>Search Metrics</CardTitle>
-                <CardDescription>
-                  Analysis of semantic search queries over time
-                </CardDescription>
+                <CardDescription>Analysis of semantic search queries over time</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-[300px]">
@@ -236,25 +240,19 @@ const Dashboard: React.FC = () => {
                       <XAxis dataKey="date" />
                       <YAxis />
                       <Tooltip />
-                      <Bar
-                        dataKey="searches"
-                        fill="#7c2bc0"
-                        radius={[4, 4, 0, 0]}
-                      />
+                      <Bar dataKey="searches" fill="#7c2bc0" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
-          
+
           <TabsContent value="usage" className="pt-4">
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle>System Usage</CardTitle>
-                <CardDescription>
-                  Monitor API usage and system performance
-                </CardDescription>
+                <CardDescription>Monitor API usage and system performance</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-[300px]">

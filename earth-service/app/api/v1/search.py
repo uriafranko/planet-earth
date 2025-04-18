@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from app.api.deps import TokenData, get_current_user
+from app.core.config import settings
 from app.core.logging import get_logger
 from app.models.endpoint import EndpointSearchResult
 from app.services.vector_search import search_vector_by_text
@@ -73,7 +74,7 @@ async def search_endpoints(
 
         # Use the optimized single text search function
         return search_vector_by_text(
-            query_text=query.q,
+            query_text=f"{settings.EMBEDDING_INSTRUCTIONS} {query.q}",
             k=query.top_k,
             filters=filters,
             similarity_threshold=0.5,

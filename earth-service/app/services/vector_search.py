@@ -6,37 +6,24 @@ from sqlmodel import col, desc, select
 
 from app.core.logging import get_logger
 from app.db.session import get_session_context
+from app.models.audit import Audit, AuditResult
 from app.models.endpoint import Endpoint, EndpointSearchResult
 from app.services.embedder import get_embedder
 
 logger = get_logger(__name__)
+
 
 def search_vector_by_text(
     query_text: str,
     k: int = 10,
     filters: dict[str, Any] | None = None,
     similarity_threshold: float = 0.0,
-    use_hnsw: bool = True,
+    use_hnsw: bool = True,  # pgvector automatically chooses the best index
 ) -> list[EndpointSearchResult]:
     embedder = get_embedder()
     embedding = embedder.embed_query(query_text)
     logger.debug(f"Embedding query text: {query_text}")
-    return search_vector_by_embedding(
-        embedding=embedding,
-        k=k,
-        filters=filters,
-        similarity_threshold=similarity_threshold,
-        use_hnsw=use_hnsw,
-    )
 
-
-def search_vector_by_embedding(
-    embedding: list[float],
-    k: int = 10,
-    filters: dict[str, Any] | None = None,
-    similarity_threshold: float = 0.0,
-    use_hnsw: bool = True,  # pgvector automatically chooses the best index
-) -> list[EndpointSearchResult]:
     with get_session_context() as session:
         similarity_expr = (1 - Endpoint.embedding_vector.cosine_distance(embedding)).label("similarity")
         query = (
@@ -66,7 +53,6 @@ def search_vector_by_embedding(
             if tags := filters.get("tags"):
                 query = query.where(col(Endpoint.tags).contains(tags))
 
-        # query = query.order_by(col("similarity").desc()).limit(k)
         logger.debug(f"Executing vector search with provided embedding and filters: {filters}")
 
         query = query.order_by(desc("similarity"))
@@ -78,8 +64,7 @@ def search_vector_by_embedding(
         elapsed = time.time() - start_time
 
         logger.debug(f"Vector search completed in {elapsed:.3f}s, found {len(results)} results")
-
-        return [
+        endpoint_results = [
             EndpointSearchResult(
                 id=str(endpoint.id),
                 schema_id=str(endpoint.schema_id),
@@ -94,6 +79,31 @@ def search_vector_by_embedding(
             )
             for endpoint, similarity in results
         ]
+
+        # --- AUDIT LOGGING ---
+        try:
+            audit = Audit(
+                query=query_text,
+                total_result_count=len(endpoint_results),
+            )
+            session.add(audit)
+            session.flush()  # To get audit.id
+
+            for result in endpoint_results:
+                audit_result = AuditResult(
+                    audit_id=audit.id,
+                    schema_id=result.schema_id,
+                    endpoint_id=result.id,
+                    result_count=1,  # Each EndpointSearchResult is one result
+                )
+                session.add(audit_result)
+
+            session.commit()
+            logger.info(f"Audit log saved for query: {query_text} ({len(endpoint_results)} results)")
+        except Exception as e:
+            logger.error(f"Failed to save audit log: {e}")
+            session.rollback()
+        return endpoint_results
 
 
 def count_indexed_vectors() -> int:

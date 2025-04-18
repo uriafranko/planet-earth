@@ -249,7 +249,6 @@ def update_existing_endpoint(
             endpoint_data["tags"],
             endpoint_data["path"],
         )
-        endpoint.updated_at = datetime.datetime.now(tz=datetime.UTC)
 
         session.add(endpoint)
         session.commit()
@@ -280,7 +279,6 @@ def create_new_endpoint(
         spec=endpoint_data["spec"],
         hash=endpoint_data["hash"],
         created_at=datetime.datetime.now(tz=datetime.UTC),
-        updated_at=datetime.datetime.now(tz=datetime.UTC),
         embedding_vector=embed_endpoint(
             schema_title,
             endpoint_data["summary"],

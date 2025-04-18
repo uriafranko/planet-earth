@@ -6,7 +6,6 @@ import {
   Schema,
   SearchQuery,
 } from '@/types/models';
-import { getCurrentUser } from './auth';
 
 // Base URL for the API
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'; // Fallback to localhost if env var not set
@@ -22,12 +21,8 @@ const fetchApi = async <T>(
   isFormData = false
 ): Promise<ApiResponse<T>> => {
   try {
-    const user = getCurrentUser();
-    const token = user ? `Bearer ${user.id}` : '';
-
     const headers: HeadersInit = {
       ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-      ...(token ? { Authorization: token } : {}),
     };
 
     const config: RequestInit = {
@@ -149,5 +144,18 @@ export const managementApi = {
   reindexEndpoint: async (endpointId: string): Promise<ApiResponse<void>> => {
     // Use real API instead of mock data
     return fetchApi<void>(`/v1/management/endpoints/${endpointId}/reindex`, 'POST');
+  },
+};
+
+// Audit API
+export type AuditLogByDay = {
+  day: string;
+  count: number;
+};
+
+export const auditApi = {
+  // Get audit logs grouped by day
+  getAuditLogsByDay: async (): Promise<ApiResponse<AuditLogByDay[]>> => {
+    return fetchApi<AuditLogByDay[]>('/v1/audit/by-day');
   },
 };

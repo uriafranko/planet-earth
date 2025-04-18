@@ -1,10 +1,8 @@
-
 import React from 'react';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import AppSidebar from './AppSidebar';
 import Header from './Header';
-import { useAuth } from '@/contexts/AuthContext';
 import LoadingSpinner from '../LoadingSpinner';
 
 interface AppLayoutProps {
@@ -12,7 +10,7 @@ interface AppLayoutProps {
 }
 
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
-  const { isLoading } = useAuth();
+  const isLoading = false;
 
   if (isLoading) {
     return (
@@ -29,9 +27,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         <div className="flex-1 flex flex-col">
           <Header />
           <ScrollArea className="flex-1">
-            <main className="container mx-auto py-6">
-              {children}
-            </main>
+            <main className="container mx-auto py-6">{children}</main>
           </ScrollArea>
         </div>
       </div>

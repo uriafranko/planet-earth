@@ -13,7 +13,6 @@ from sentence_transformers import SentenceTransformer
 
 from app.core.config import settings
 from app.core.logging import get_logger
-from app.models.endpoint import Endpoint
 
 logger = get_logger(__name__)
 
@@ -71,7 +70,7 @@ class Embedder:
             cache_path.mkdir(parents=True)
 
         # Define the local model path
-        model_local_path = Path(cache_dir) / model_name.replace('/', '_')
+        model_local_path = Path(cache_dir) / model_name.replace("/", "_")
 
         # First try to load from the local saved model
         if model_local_path.exists():

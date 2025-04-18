@@ -28,12 +28,10 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const Schemas: React.FC = () => {
   const { toast } = useToast();
-  const { canPerformAction } = useAuth();
   const navigate = useNavigate();
 
   const [schemas, setSchemas] = useState<Schema[]>([]);
@@ -184,12 +182,10 @@ const Schemas: React.FC = () => {
             <h1 className="text-3xl font-bold tracking-tight">API Schemas</h1>
             <p className="text-muted-foreground">Manage your OpenAPI schema definitions</p>
           </div>
-          {canPerformAction('create') && (
-            <Button onClick={() => setUploadDialogOpen(true)}>
-              <Upload className="h-4 w-4 mr-2" />
-              Upload Schema
-            </Button>
-          )}
+          <Button onClick={() => setUploadDialogOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Upload Schema
+          </Button>
         </div>
 
         {isLoading ? (
@@ -212,26 +208,20 @@ const Schemas: React.FC = () => {
               />
             ))}
 
-            {canPerformAction('create') && (
-              <div
-                onClick={() => setUploadDialogOpen(true)}
-                className="h-full min-h-[200px] border border-dashed rounded-md flex flex-col items-center justify-center p-6 cursor-pointer hover:bg-muted/50 transition-colors"
-              >
-                <div className="h-12 w-12 rounded-full bg-muted/60 flex items-center justify-center mb-3">
-                  <Plus className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <p className="text-muted-foreground font-medium">Upload Schema</p>
+            <div
+              onClick={() => setUploadDialogOpen(true)}
+              className="h-full min-h-[200px] border border-dashed rounded-md flex flex-col items-center justify-center p-6 cursor-pointer hover:bg-muted/50 transition-colors"
+            >
+              <div className="h-12 w-12 rounded-full bg-muted/60 flex items-center justify-center mb-3">
+                <Plus className="h-6 w-6 text-muted-foreground" />
               </div>
-            )}
+              <p className="text-muted-foreground font-medium">Upload Schema</p>
+            </div>
           </div>
         ) : (
           <NoData
             title="No schemas found"
-            description={
-              canPerformAction('create')
-                ? "Click the 'Upload Schema' button to add your first OpenAPI schema."
-                : "You don't have any schemas to display."
-            }
+            description="Click the 'Upload Schema' button to add your first OpenAPI schema."
           />
         )}
       </div>

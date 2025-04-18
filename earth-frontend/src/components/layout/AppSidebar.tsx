@@ -15,7 +15,6 @@ import {
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
 import Logo from '../Logo';
-import { useAuth } from '@/contexts/AuthContext';
 import UserAvatar from '../UserAvatar';
 import RoleIndicator from '../RoleIndicator';
 
@@ -29,7 +28,6 @@ interface MenuItem {
 }
 
 const AppSidebar: React.FC = () => {
-  const { user, logout, hasRole } = useAuth();
   const location = useLocation();
 
   // Navigation menu items
@@ -60,9 +58,6 @@ const AppSidebar: React.FC = () => {
     },
   ];
 
-  // Filter menu items based on user role
-  const filteredMenuItems = menuItems.filter((item) => hasRole(item.roles));
-
   return (
     <Sidebar className="border-r">
       <SidebarHeader className="flex justify-center py-6">
@@ -74,7 +69,7 @@ const AppSidebar: React.FC = () => {
           <SidebarGroupLabel>Main Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {filteredMenuItems.map((item) => (
+              {menuItems.map((item) => (
                 <SidebarMenuItem key={item.path}>
                   <SidebarMenuButton asChild isActive={location.pathname === item.path}>
                     <Link to={item.path} className="flex items-center">
@@ -88,28 +83,6 @@ const AppSidebar: React.FC = () => {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-
-      {user && (
-        <SidebarFooter className="border-t p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <UserAvatar user={user} size="sm" />
-              <div className="flex flex-col">
-                <span className="text-sm font-medium">{user.name}</span>
-                <RoleIndicator role={user.role} size="sm" />
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={logout}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        </SidebarFooter>
-      )}
     </Sidebar>
   );
 };
