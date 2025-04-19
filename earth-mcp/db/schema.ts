@@ -32,4 +32,24 @@ export const auditResults = pgTable('audit_results', {
   result_count: integer('result_count').notNull(),
 });
 
+// --- Document & Chunk Tables ---
+
+export const documents = pgTable('documents', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  title: text('title').notNull(),
+  original_filename: text('original_filename'),
+  file_type: text('file_type').notNull(),
+  text: text('text'),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const documentChunks = pgTable('document_chunks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  document_id: uuid('document_id').notNull().references(() => documents.id, { onDelete: 'cascade' }),
+  chunk_index: integer('chunk_index').notNull(),
+  text: text('text').notNull(),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  embedding: vector('embedding', { dimensions: 768 }).notNull(),
+});
+
 

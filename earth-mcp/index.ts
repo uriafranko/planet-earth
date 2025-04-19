@@ -9,7 +9,7 @@ import fs from 'fs';
 // Drizzle ORM imports
 import { v4 as uuidv4 } from 'uuid';
 import { db } from './db/client.js';
-import { endpoints, audits, auditResults } from './db/schema.js';
+import { endpoints, audits, auditResults, documents, documentChunks } from './db/schema.js';
 import { cosineDistance, sql, gt, desc } from 'drizzle-orm';
 
 const MODEL_ID = 'BAAI/bge-base-en-v1.5';
@@ -173,6 +173,85 @@ server.tool(
           {
             type: 'text',
             text: `Error during semantic search: ${error.message}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+);
+
+/**
+ * Semantic search for document chunks, joining parent document.
+ */
+server.tool(
+  'search_documents',
+  'Semantic search for document chunks, returning both chunk and parent document info.',
+  {
+    query: z.string().describe('The search query for document content.'),
+    limit: z
+      .number()
+      .min(1)
+      .max(30)
+      .optional()
+      .default(10)
+      .describe('Maximum number of results to return - default: 10'),
+  },
+  async ({ query, limit }) => {
+    try {
+      // Generate embedding vector for the query
+      const vector = await getEmbedding(EMBEDDING_INSTRUCTIONS + query);
+      const similarity = sql<number>`1 - (${cosineDistance(documentChunks.embedding, vector)})`;
+
+      // Join document_chunks with documents, search by embedding similarity
+      const results = await db
+        .select({
+          document_id: documentChunks.document_id,
+          chunk_id: documentChunks.id,
+          title: documents.title,
+          // chunk_text: documentChunks.text,
+          document_text: documents.text,
+          score: similarity,
+          created_at: documentChunks.created_at,
+        })
+        .from(documentChunks)
+        .innerJoin(documents, sql`${documentChunks.document_id} = ${documents.id}`)
+        .where(gt(similarity, 0.5))
+        .orderBy(desc(similarity))
+        .limit(limit);
+
+      // Map results to match DocumentSearchResult
+      const mapped = results.map((row: any) => ({
+        document_id: String(row.document_id),
+        chunk_id: String(row.chunk_id),
+        title: row.title,
+        document_text: row.document_text,
+        score: row.score,
+        created_at: row.created_at,
+      }));
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                status: 'success',
+                results: mapped,
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    } catch (err: unknown) {
+      const error = err as Error;
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error during document search: ${error.message}`,
           },
         ],
         isError: true,
