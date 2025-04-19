@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Database, FileJson, Home, LogOut, Search } from 'lucide-react';
+import { Database, FileJson, Home, LogOut, Search, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Sidebar,
@@ -51,8 +51,20 @@ const AppSidebar: React.FC = () => {
       roles: ['admin', 'user', 'viewer'],
     },
     {
-      title: 'Search',
+      title: 'Documents',
+      path: '/documents',
+      icon: FileText,
+      roles: ['admin', 'user', 'viewer'],
+    },
+    {
+      title: 'Endpoint Search',
       path: '/search',
+      icon: Search,
+      roles: ['admin', 'user', 'viewer'],
+    },
+    {
+      title: 'Document Search',
+      path: '/document-search',
       icon: Search,
       roles: ['admin', 'user', 'viewer'],
     },

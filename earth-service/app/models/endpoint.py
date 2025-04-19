@@ -55,7 +55,7 @@ class Endpoint(BaseModel, table=True):
     deleted_at: datetime | None = Field(default=None, nullable=True)
 
     # Relationship back to the schema
-    schema: Schema = Relationship(back_populates="endpoints")
+    schema_obj: Schema = Relationship(back_populates="endpoints")
 
 
     # Additional fields not in the base schema but useful for the application

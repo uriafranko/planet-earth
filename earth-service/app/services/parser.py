@@ -111,8 +111,8 @@ class APISpecParser:
                 try:
                     validate_openapi(spec)
                     logger.info("OpenAPI spec validation successful")
-                except OpenAPIValidationError as e:
-                    logger.exception(f"OpenAPI validation error: {str(e)}")
+                except OpenAPIValidationError:
+                    logger.exception("OpenAPI validation error")
                     raise
                 except Exception as e:
                     logger.warning(f"OpenAPI validation warning: {str(e)}")
@@ -405,7 +405,7 @@ class APISpecParser:
             text_parts.append(f"Content Types: {', '.join(content_types)}")
 
             # Add more detailed schema information if available
-            for content_type, content_info in content.items():
+            for content_info in content.values():
                 if schema := content_info.get("schema"):
                     # Add schema type
                     if schema_type := schema.get("type"):

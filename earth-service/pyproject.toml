@@ -41,7 +41,7 @@ dependencies = [
     "pydantic-settings>=2.0.0",
     # Database & ORM
     "sqlmodel>=0.0.24",
-    "psycopg[binary]>=3.1.0", # Use psycopg[binary] or psycopg depending on needs
+    "psycopg[binary]>=3.1.0",       # Use psycopg[binary] or psycopg depending on needs
     "alembic>=1.13.0",
     "sentence-transformers>=2.3.0", # Check specific model compatibility if needed
     # Task Queue
@@ -54,8 +54,8 @@ dependencies = [
     # Utilities
     "joblib>=1.3.0",
     "python-jose[cryptography]>=3.3.0", # For JWT Auth
-    "passlib[bcrypt]>=1.7.4", # For password hashing if needed
-    "python-multipart>=0.0.7", # For file uploads
+    "passlib[bcrypt]>=1.7.4",           # For password hashing if needed
+    "python-multipart>=0.0.7",          # For file uploads
     # Observability (Optional, based on PRD)
     # "opentelemetry-api",
     # "opentelemetry-sdk",
@@ -71,6 +71,7 @@ dependencies = [
     "mcp[cli]>=1.6.0",
     "fastapi-mcp>=0.2.0",
     "torch>=2.6.0",
+    "markitdown[docx,pdf]>=0.1.1",
 ]
 
 [project.optional-dependencies]
@@ -95,7 +96,6 @@ target-version = "py311"
 # Enable all rules, including those that are fixable
 select = ["ALL"]
 
-# Exclude rules that conflict with each other or are too strict
 ignore = [
     "D203",    # Conflicts with D211
     "D212",    # Conflicts with D213
@@ -118,7 +118,22 @@ ignore = [
     "PLR0913",
     "FBT",
     "RUF010",
-]
+    "RUF013",
+    "ARG001",
+    "BLE001",
+    "TRY301",
+    "PTH118",
+    "PTH208",
+    "ERA001",
+    "D103",
+    "PGH003",
+    "ARG002",
+    "D101",
+    "PLR2004",
+    "FAST002",
+    "INP001",
+    "DTZ003",
+] # Exclude rules that conflict with each other or are too strict
 
 # Allow autofix for all enabled rules (when `--fix` is passed)
 fixable = ["ALL"]

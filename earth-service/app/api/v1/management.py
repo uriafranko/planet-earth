@@ -1,7 +1,8 @@
 import uuid
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.api.deps import TokenData, get_current_user, get_db
 from app.core.logging import get_logger
@@ -41,7 +42,7 @@ async def list_schema_endpoints(
 
     # Filter deleted endpoints if requested
     if not include_deleted:
-        query = query.where(Endpoint.deleted_at.is_(None))
+        query = query.where(col(Endpoint.deleted_at).is_(None))
 
     # Apply pagination
     query = query.offset(offset).limit(limit)
@@ -91,8 +92,8 @@ async def reindex_vector_store(
 )
 async def reindex_endpoint_api(
     endpoint_id: uuid.UUID,
-    db: Session = Depends(get_db),
-    _current_user: TokenData = Depends(get_current_user),
+    db: Annotated[Session, Depends(get_db)],
+    _current_user: Annotated[TokenData, Depends(get_current_user)],
 ):
     """Reindex a specific endpoint in the vector store.
 

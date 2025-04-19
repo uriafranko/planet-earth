@@ -29,7 +29,7 @@ class Schema(BaseModel, table=True):
 
     # Relationships
     endpoints: list["Endpoint"] = Relationship(
-        back_populates="schema",
+        back_populates="schema_obj",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"},
     )
 

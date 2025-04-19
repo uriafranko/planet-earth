@@ -7,6 +7,8 @@ import Dashboard from './pages/Dashboard';
 import Schemas from './pages/Schemas';
 import Endpoints from './pages/Endpoints';
 import Search from './pages/Search';
+import Documents from './pages/Documents';
+import DocumentSearch from './pages/DocumentSearch';
 import NotFound from './pages/NotFound';
 
 const queryClient = new QueryClient();
@@ -26,6 +28,9 @@ const App = () => (
           <Route path="/schemas" element={<Schemas />} />
           <Route path="/endpoints" element={<Endpoints />} />
           <Route path="/search" element={<Search />} />
+          <Route path="/documents" element={<Documents />} />
+
+          <Route path="/document-search" element={<DocumentSearch />} />
 
           {/* Catch-all route */}
           <Route path="*" element={<NotFound />} />

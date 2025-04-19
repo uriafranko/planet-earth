@@ -31,3 +31,5 @@ export const auditResults = pgTable('audit_results', {
   endpoint_id: uuid('endpoint_id').notNull(),
   result_count: integer('result_count').notNull(),
 });
+
+

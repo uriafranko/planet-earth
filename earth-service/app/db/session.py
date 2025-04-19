@@ -55,7 +55,6 @@ def get_session_context() -> Generator[Session, None, None]:
 def install_extension():
     """Install PostgreSQL extensions if needed."""
     logger.info("Installing PostgreSQL extensions")
-    session = get_session()
     with get_session_context() as session:
         # Check if the extension is already installed
         session.exec(text("CREATE EXTENSION IF NOT EXISTS vector"))

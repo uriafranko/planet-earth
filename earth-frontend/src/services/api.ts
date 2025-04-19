@@ -147,6 +147,31 @@ export const managementApi = {
   },
 };
 
+// Documents API
+import type { Document, DocumentDetail, DocumentSearchRequest, DocumentSearchResult } from '@/types/models';
+
+export const documentsApi = {
+  listDocuments: async (): Promise<ApiResponse<Document[]>> =>
+    fetchApi<Document[]>('/v1/documents'),
+
+  uploadDocument: async (file: File, title: string): Promise<ApiResponse<Document>> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('title', title);
+    return fetchApi<Document>('/v1/documents/upload', 'POST', formData, true);
+  },
+
+  getDocument: async (documentId: string): Promise<ApiResponse<DocumentDetail>> =>
+    fetchApi<DocumentDetail>(`/v1/documents/${documentId}`),
+
+  deleteDocument: async (documentId: string): Promise<ApiResponse<void>> =>
+    fetchApi<void>(`/v1/documents/${documentId}`, 'DELETE'),
+
+  searchDocuments: async (query: DocumentSearchRequest): Promise<ApiResponse<DocumentSearchResult[]>> =>
+    fetchApi<DocumentSearchResult[]>('/v1/search/documents/search', 'POST', query),
+};
+
+
 // Audit API
 export type AuditLogByDay = {
   day: string;

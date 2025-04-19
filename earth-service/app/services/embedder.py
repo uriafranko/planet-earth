@@ -53,7 +53,7 @@ class Embedder:
                 device = "cuda"
             elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
                 # MPS is not fork-safe and will crash in multiprocessing (e.g., Celery)
-                logger.warning(
+                logger.info(
                     "MPS (Apple Silicon GPU) is available, but is not fork-safe and will crash in multiprocessing environments. "
                     "Falling back to CPU. If you want to force GPU, set EMBEDDING_DEVICE to 'cuda' (if available)."
                 )

@@ -1,12 +1,15 @@
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Annotated
+
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from app.api.deps import TokenData, get_current_user
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.models.documents import DocumentSearchRequest, DocumentSearchResult
 from app.models.endpoint import EndpointSearchResult
-from app.services.vector_search import search_vector_by_text
+from app.services.vector_search import search_documents_by_text, search_endpoints_by_text
 
 logger = get_logger(__name__)
 
@@ -45,7 +48,7 @@ class SearchQuery(BaseModel):
 )
 async def search_endpoints(
     query: SearchQuery,
-    _current_user: TokenData | None = Depends(get_current_user),
+    _current_user: Annotated[TokenData | None, Depends(get_current_user)],
 ):
     """Perform semantic search over API endpoints.
 
@@ -73,7 +76,7 @@ async def search_endpoints(
         )
 
         # Use the optimized single text search function
-        return search_vector_by_text(
+        return search_endpoints_by_text(
             query_text=f"{settings.EMBEDDING_INSTRUCTIONS} {query.q}",
             k=query.top_k,
             filters=filters,
@@ -86,3 +89,31 @@ async def search_endpoints(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error performing search: {e!s}",
         ) from e
+
+
+
+
+@router.post("/documents/search", response_model=list[DocumentSearchResult])
+def search_documents(
+    request: DocumentSearchRequest,
+):
+    try:
+        # Optionally filter by title/upload_date
+        filters = {}
+        if request.created_at:
+            filters["created_at"] = request.created_at
+                # Use the optimized single text search function
+        return search_documents_by_text(
+                query_text=f"{settings.EMBEDDING_INSTRUCTIONS} {request.query}",
+                k=request.top_k,
+                filters=filters,
+                similarity_threshold=0.5,
+            )
+
+    except Exception as e:
+        logger.exception("Error during semantic search")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error performing search: {e!s}",
+        ) from e
+

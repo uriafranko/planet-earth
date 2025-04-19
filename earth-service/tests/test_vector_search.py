@@ -3,7 +3,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from app.services.vector_search import search_vector_by_text
+from app.services.vector_search import search_endpoints_by_text
 
 
 class TestVectorSearch(unittest.TestCase):
@@ -24,7 +24,7 @@ class TestVectorSearch(unittest.TestCase):
             mock_get_embedder.return_value = mock_embedder
 
             # Call the function
-            result = search_vector_by_text(query_text="nonexistent query", k=10)
+            result = search_endpoints_by_text(query_text="nonexistent query", k=10)
 
             # Verify the result is an empty list
             assert result == []

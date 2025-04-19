@@ -38,7 +38,6 @@ logger = get_logger(__name__)
 def enqueue_schema_processing(
     schema_id: str,
     file_content: bytes,
-    file_name: str,
 ) -> str:
     """Enqueue a schema for processing in the background.
 
@@ -53,7 +52,6 @@ def enqueue_schema_processing(
     task = process_schema.delay(
         schema_id=schema_id,
         file_content=file_content,
-        file_name=file_name,
     )
     logger.info(
         "Enqueued schema processing task",
@@ -82,7 +80,7 @@ def _validate_schema_exists(session: Session, schema_id: str) -> Schema:
 
 
 @celery_app.task(name="process_schema")
-def process_schema(schema_id: str, file_content: bytes, file_name: str) -> dict:
+def process_schema(schema_id: str, file_content: bytes) -> dict:
     """Process an OpenAPI schema: parse, extract endpoints, and store them.
 
     This is the main worker function that:

@@ -11,7 +11,7 @@ class Settings(BaseSettings):
 
     # Authentication
     ENABLE_AUTH: bool = False
-    SECRET_KEY: str = "your-secret-key-here"  # For JWT, should be overridden in .env
+    SECRET_KEY: str = ""  # For JWT, should be overridden in .env
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # CORS
@@ -26,7 +26,7 @@ class Settings(BaseSettings):
         raise ValueError(v)
 
     POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = "secret"
+    POSTGRES_PASSWORD: str = ""
     POSTGRES_SERVER: str = "127.0.0.1"
     POSTGRES_PORT: int = 5433
     POSTGRES_DB: str = "planet_earth_db"

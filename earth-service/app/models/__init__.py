@@ -1,4 +1,5 @@
-from .endpoint import Endpoint  # noqa: ALL
-from .schema import Schema  # noqa: ALL
+from .documents import Document, DocumentChunk
+from .endpoint import Endpoint
+from .schema import Schema
 
-__all__ = ["Endpoint", "Schema"]
+__all__ = ["Document", "DocumentChunk", "Endpoint", "Schema"]

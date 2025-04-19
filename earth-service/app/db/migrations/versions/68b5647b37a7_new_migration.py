@@ -1,7 +1,7 @@
 """New migration
 
 Revision ID: 68b5647b37a7
-Revises: 
+Revises:
 Create Date: 2025-04-12 11:32:34.205725
 
 """

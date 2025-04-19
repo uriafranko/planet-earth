@@ -1,4 +1,3 @@
-
 // Authentication related types
 export interface User {
   id: string;
@@ -60,4 +59,33 @@ export interface ApiError {
 export interface ApiResponse<T> {
   data?: T;
   error?: ApiError;
+}
+
+// Document related types
+export interface Document {
+  id: string;
+  title: string;
+  created_at: string;
+  original_filename?: string | null;
+  file_type: string;
+}
+
+export interface DocumentDetail extends Document {
+  text?: string | null;
+}
+
+export interface DocumentSearchRequest {
+  query: string;
+  top_k?: number;
+  created_at?: string | null;
+}
+
+export interface DocumentSearchResult {
+  document_id: string;
+  chunk_id: string;
+  title: string;
+  chunk_text: string;
+  document_text?: string | null;
+  score: number;
+  created_at: string;
 }

@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from typing import Annotated
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,13 +11,14 @@ from sqlmodel import SQLModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 import app.models  # noqa: ALL
-from app.api.v1 import audit, management, schemas, search
+from app.api.v1 import audit, documents, management, schemas, search
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.db.session import engine, install_extension
+from app.models.documents import DocumentSearchResult
 from app.models.endpoint import EndpointSearchResult
 from app.services.embedder import get_embedder
-from app.services.vector_search import search_vector_by_text
+from app.services.vector_search import search_endpoints_by_text, search_documents_by_text
 
 logger = get_logger(__name__)
 
@@ -39,6 +41,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
 # Set all CORS enabled origins
 app.add_middleware(
     CORSMiddleware,
@@ -53,6 +56,7 @@ app.add_middleware(
 
 # Include API routers
 app.include_router(schemas.router, prefix=settings.API_V1_STR)
+app.include_router(documents.router, prefix=settings.API_V1_STR)
 app.include_router(search.router, prefix=settings.API_V1_STR)
 app.include_router(management.router, prefix=settings.API_V1_STR)
 app.include_router(audit.router, prefix=settings.API_V1_STR)
@@ -82,7 +86,7 @@ class SPAStaticFiles(StaticFiles):
         except (HTTPException, StarletteHTTPException) as ex:
             if ex.status_code == 404:
                 return await super().get_response("index.html", scope)
-            raise ex
+            raise
         return response
 
 
@@ -130,18 +134,40 @@ app.openapi = custom_openapi
     "/find_api_spec",
     operation_id="find_api_spec",
     description="Find any API endpoint documentation by service name and description.",
-    response_model=list[EndpointSearchResult],
     tags=["API Search"],
 )
 async def find_api_spec(
-    api_description: str = Query(..., description="A brief description of the API endpoint goal to search for")) -> list[EndpointSearchResult]:
+    api_description: Annotated[str, Query(description="A brief description of the API endpoint goal to search for")]
+    ) -> list[EndpointSearchResult]:
     """
     Find any API endpoint documentation by description.
     Search query for API endpoint documentation - e.g. "Search Slack messages" or "Create a github repository".
     This will return a list of API endpoints that match the description.
     """
-    return search_vector_by_text(
+    return search_endpoints_by_text(
             query_text=f"{api_description}",
+            k=5,
+            similarity_threshold=0.4,
+    )
+    
+# Explicit operation_id (tool will be named "find_api_spec")
+@app.get(
+    "/find_docs",
+    operation_id="find_docs",
+    description="Find internal technical documentations any thing",
+    tags=["API Search"],
+)
+async def find_docs(
+    doc_description: Annotated[str, Query(description="A brief description of the document goal to search for")]
+    ) -> list[DocumentSearchResult]:
+    """
+    Find any internal technical documentations by description.
+    Search query for internal technical documentations - e.g. "Search Slack messages" or "Create a github repository".
+    This will return a list of internal technical documentations that match the description.
+    The search is performed using a vector search algorithm.
+    """
+    return search_documents_by_text(
+            query_text=f"{doc_description}",
             k=5,
             similarity_threshold=0.4,
     )

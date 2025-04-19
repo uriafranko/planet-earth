@@ -1,5 +1,6 @@
 import hashlib
 import uuid
+from typing import Annotated
 
 from fastapi import (
     APIRouter,
@@ -9,7 +10,7 @@ from fastapi import (
     UploadFile,
     status,
 )
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.api.deps import TokenData, get_current_user, get_db
 from app.core.config import settings
@@ -30,7 +31,7 @@ router = APIRouter(prefix="/schemas", tags=["schemas"])
     description="Upload a YAML or JSON OpenAPI 3.x specification file for processing.",
 )
 async def upload_schema(
-    file: UploadFile = File(...),
+    file: Annotated[UploadFile, File()] = ...,
     db: Session = Depends(get_db),
     _current_user: TokenData | None = Depends(get_current_user),
 ):
@@ -82,7 +83,6 @@ async def upload_schema(
     enqueue_schema_processing(
         schema_id=str(new_schema.id),
         file_content=contents,
-        file_name=file.filename or "unknown.yaml",
     )
 
     logger.info(
@@ -106,7 +106,7 @@ async def list_schemas(
 ):
     """List all schemas with pagination."""
     return db.exec(
-        select(Schema).offset(offset).limit(limit).order_by(Schema.created_at.desc()),
+        select(Schema).offset(offset).limit(limit).order_by(col(Schema.created_at).desc()),
     ).all()
 
 
@@ -118,7 +118,7 @@ async def list_schemas(
 )
 async def get_schema(
     schema_id: uuid.UUID,
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Get details for a specific schema by ID."""
     schema = db.get(Schema, schema_id)
@@ -138,8 +138,8 @@ async def get_schema(
 )
 async def delete_schema(
     schema_id: uuid.UUID,
-    db: Session = Depends(get_db),
-    _current_user: TokenData | None = Depends(get_current_user),
+    db: Annotated[Session, Depends(get_db)],
+    _current_user: Annotated[TokenData | None, Depends(get_current_user)],
 ):
     """Delete a schema and all its associated endpoints (cascading delete)."""
     schema = db.get(Schema, schema_id)

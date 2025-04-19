@@ -217,7 +217,7 @@ class PostgresVectorStore(VectorStore):
                     s.title as schema_title,
                     s.version as schema_version,
                     1 - (embedding_vector <=> :vector::vector) as similarity
-                FROM 
+                FROM
                     endpoints e
                 JOIN
                     schemas s ON e.schema_id = s.id
@@ -244,7 +244,7 @@ class PostgresVectorStore(VectorStore):
                 ORDER BY similarity DESC
                 LIMIT :limit
             """
-            params["limit"] = k
+            params["limit"] = k # type: ignore
 
             # Execute the query
             results = session.execute(text(sql), params).fetchall()
@@ -253,7 +253,7 @@ class PostgresVectorStore(VectorStore):
             search_results = []
             for row in results:
                 # Convert row to dict
-                row_dict = {col: getattr(row, col) for col in row.keys()}
+                {col: getattr(row, col) for col in row}
 
                 # Extract metadata
                 metadata = {
@@ -284,7 +284,7 @@ class PostgresVectorStore(VectorStore):
         with get_session_context() as session:
             # Query the endpoint and its vector
             sql = """
-                SELECT 
+                SELECT
                     e.id,
                     e.schema_id,
                     e.path,
@@ -297,7 +297,7 @@ class PostgresVectorStore(VectorStore):
                     s.title as schema_title,
                     s.version as schema_version,
                     e.embedding_vector
-                FROM 
+                FROM
                     endpoints e
                 JOIN
                     schemas s ON e.schema_id = s.id
@@ -311,7 +311,7 @@ class PostgresVectorStore(VectorStore):
                 return None
 
             # Convert row to dict
-            row_dict = {col: getattr(result, col) for col in result.keys()}
+            {col: getattr(result, col) for col in result}
 
             # Extract metadata
             metadata = {
@@ -377,31 +377,6 @@ class PostgresVectorStore(VectorStore):
 
                 # Commit after each chunk
                 session.commit()
-
-    def batch_delete(self, vector_ids: list[str]) -> None:
-        """Delete multiple vectors from the store in a single batch operation.
-
-        Args:
-            vector_ids: List of unique identifiers to delete
-        """
-        if not vector_ids:
-            return
-
-        with get_session_context() as session:
-            # We don't actually delete the endpoints, just null out the vectors
-            placeholders = ", ".join(f"'{vid}'" for vid in vector_ids)
-            sql = text(
-                f"""
-                UPDATE endpoints 
-                SET 
-                    embedding = NULL,
-                    embedding_vector = NULL
-                WHERE id IN ({placeholders})
-                """
-            )
-            session.execute(sql)
-            session.commit()
-
 
 @lru_cache(maxsize=1)
 def get_vector_store() -> VectorStore:
