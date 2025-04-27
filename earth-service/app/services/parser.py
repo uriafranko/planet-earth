@@ -4,6 +4,7 @@ import hashlib
 import json
 from typing import Any
 
+from app.services.postman_parser import PostmanToOpenAPI, detect_schema
 import yaml
 from jsonref import JsonRef
 from openapi_spec_validator import validate as validate_openapi
@@ -41,8 +42,13 @@ class APISpecParser:
             content_str = content.decode("utf-8") if isinstance(content, bytes) else content
 
             # Parse content as JSON or YAML
-            parsed = self._parse_content(content_str)
+            parsed, schema_type = self._parse_content(content_str)
+            logger.info(f"Parsed API spec as {schema_type}")
 
+            if schema_type == "unknown":
+                logger.warning("Unknown schema type detected, proceeding with caution")
+            elif schema_type == "postman":
+                parsed = dict(PostmanToOpenAPI(parsed).transform())
             # Resolve JSON references
             parsed = self._resolve_references(parsed)
 
@@ -54,23 +60,24 @@ class APISpecParser:
             logger.exception("Error parsing API spec")
             raise ValueError(f"Failed to parse API spec: {e!s}") from e
 
-    def _parse_content(self, content_str: str) -> dict:
+    def _parse_content(self, content_str: str) -> tuple[dict, str]:
         """Parse content string as JSON or YAML.
 
         Args:
             content_str: String content to parse
 
         Returns:
-            Parsed dictionary
+            Parsed dictionary and schema type
 
         Raises:
             ValueError: If content cannot be parsed
         """
         try:
-            return json.loads(content_str)
+            data = json.loads(content_str)
+            return data, detect_schema(data)
         except json.JSONDecodeError:
             try:
-                return yaml.safe_load(content_str)
+                return yaml.safe_load(content_str), "openapi"
             except yaml.YAMLError as e:
                 logger.exception("Failed to parse content as YAML")
                 error_message = f"Content could not be parsed as JSON or YAML: {str(e)}"
