@@ -37,7 +37,7 @@ Planet Earth is an open-source platform that bridges the gap between modern AI-p
   - [Quick Start with Docker Compose](#quick-start-with-docker-compose)
   - [Kubernetes Deployment with Helm](#kubernetes-deployment-with-helm)
 - [🚀 Usage](#-usage)
-  - [Uploading OpenAPI Schemas](#uploading-openapi-schemas)
+  - [Uploading OpenAPI / Postman Schemas](#uploading-openapi--postman-schemas)
   - [Connecting to an AI IDE](#connecting-to-an-ai-ide)
   - [Using the APIs in your IDE](#using-the-apis-in-your-ide)
 - [📁 Project Structure](#-project-structure)
@@ -60,7 +60,7 @@ Planet Earth follows a modern, microservices-based architecture:
 The system works as follows:
 
 1. User deploys Planet Earth to their cluster
-2. User uploads internal OpenAPI schemas to their Planet Earth instance
+2. User uploads internal OpenAPI / Postman schemas to their Planet Earth instance
 3. Planet Earth parses the schemas and breaks them into endpoints
 4. These endpoints are embedded and saved into a vector search database (PostgreSQL with pgvector)
 5. Planet Earth exposes an MCP server
@@ -107,11 +107,11 @@ helm install planet-earth planet-earth/earth-chart \
 
 ## 🚀 Usage
 
-### Uploading OpenAPI Schemas
+### Uploading OpenAPI / Postman Schemas
 
 1. Access the Planet Earth web interface at `http://localhost:3000` (or your custom domain)
 2. Navigate to the "Schemas" section
-3. Upload your OpenAPI JSON or YAML files
+3. Upload your OpenAPI / Postman JSON or YAML files
 4. Planet Earth will automatically process and index the schemas
 
 ### Connecting to an AI IDE
