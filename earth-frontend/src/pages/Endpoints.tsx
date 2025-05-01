@@ -128,7 +128,18 @@ const EndpointDetails: React.FC<EndpointDetailsProps> = ({ endpoint, onClose }) 
               </div>
             </div>
           )}
-
+          <div className="mt-4">
+            <div className="font-semibold mb-1">Spec (JSON):</div>
+            <div className="bg-muted p-2 rounded text-xs overflow-x-auto max-h-64">
+              {endpoint.spec ? (
+                <pre className="whitespace-pre-wrap break-all">
+                  {JSON.stringify(endpoint.spec, null, 2)}
+                </pre>
+              ) : (
+                <span className="text-muted-foreground">No spec available for this endpoint.</span>
+              )}
+            </div>
+          </div>
           <div className="space-y-1">
             <h3 className="text-sm font-semibold">Metadata</h3>
             <div className="grid grid-cols-2 gap-2 text-sm">

@@ -19,10 +19,17 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import EndpointSearchResultCard from '@/components/cards/EndpointSearchResultCard';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 const Search: React.FC = () => {
   const { toast } = useToast();
-  const navigate = useNavigate();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<EndpointSearchResult[]>([]);
@@ -31,6 +38,10 @@ const Search: React.FC = () => {
   const [filterMethod, setFilterMethod] = useState<string | null>(null);
   const [filterSchemaId, setFilterSchemaId] = useState<string | null>(null);
   const [includeDeprecated, setIncludeDeprecated] = useState(false);
+
+  // Modal state
+  const [selectedEndpoint, setSelectedEndpoint] = useState<EndpointSearchResult | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -78,13 +89,70 @@ const Search: React.FC = () => {
     }
   };
 
+  // Open modal with selected endpoint
   const handleResultSelect = (result: EndpointSearchResult) => {
-    navigate(`/endpoints?schema=${result.schema_id}`);
+    setSelectedEndpoint(result);
+    setModalOpen(true);
+  };
+
+  // Close modal handler
+  const handleModalClose = () => {
+    setModalOpen(false);
+    setSelectedEndpoint(null);
+  };
+
+  // Modal content for endpoint details
+  const renderEndpointModal = () => {
+    if (!selectedEndpoint) return null;
+    return (
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {selectedEndpoint.method} {selectedEndpoint.path}
+            </DialogTitle>
+            <DialogDescription>
+              <div className="mt-2">
+                <div>
+                  <span className="font-medium">API:</span> {selectedEndpoint.schema_title}
+                </div>
+                <div>
+                  <span className="font-medium">Version:</span> {selectedEndpoint.schema_version}
+                </div>
+                {selectedEndpoint.summary && (
+                  <div className="mt-2">
+                    <span className="font-medium">Summary:</span> {selectedEndpoint.summary}
+                  </div>
+                )}
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4">
+            <div className="font-semibold mb-1">Spec (JSON):</div>
+            <div className="bg-muted p-2 rounded text-xs overflow-x-auto max-h-64">
+              {selectedEndpoint.spec ? (
+                <pre className="whitespace-pre-wrap break-all">
+                  {JSON.stringify(selectedEndpoint.spec, null, 2)}
+                </pre>
+              ) : (
+                <span className="text-muted-foreground">No spec available for this endpoint.</span>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={handleModalClose}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
   };
 
   return (
     <AppLayout>
       <div className="space-y-6">
+        {renderEndpointModal()}
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Semantic Search</h1>
           <p className="text-muted-foreground">Search for API endpoints using natural language</p>

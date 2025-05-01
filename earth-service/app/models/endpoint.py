@@ -95,6 +95,7 @@ class EndpointRead(BaseModel):
     description: str | None = None
     tags: str | None = None
     deleted_at: datetime | None = None
+    spec: dict[str, Any] | None = None
 
 
 class EndpointCreate(SQLModel):

@@ -2,7 +2,6 @@ import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { EndpointSearchResult } from '@/types/models';
 import { Button } from '@/components/ui/button';
-import { ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import MethodBadge from '../MethodBadge';
 
@@ -12,7 +11,11 @@ interface EndpointSearchResultCardProps {
   className?: string;
 }
 
-const EndpointSearchResultCard: React.FC<EndpointSearchResultCardProps> = ({ result, onSelect, className }) => {
+const EndpointSearchResultCard: React.FC<EndpointSearchResultCardProps> = ({
+  result,
+  onSelect,
+  className,
+}) => {
   // Format score as percentage
   const scorePercentage = Math.round(result.score * 100);
 
@@ -50,8 +53,7 @@ const EndpointSearchResultCard: React.FC<EndpointSearchResultCardProps> = ({ res
       </CardContent>
       <CardFooter className="pt-0">
         <Button variant="default" size="sm" className="w-full" onClick={onSelect}>
-          <ExternalLink className="h-4 w-4 mr-2" />
-          View Endpoint
+          View Details
         </Button>
       </CardFooter>
     </Card>

@@ -32,6 +32,7 @@ export interface Endpoint {
   operation_id: string | null;
   summary: string | null;
   description: string | null;
+  spec: object | null;
   tags: string | null;
   created_at: string;
   deleted_at: string | null;
