@@ -230,9 +230,9 @@ const Schemas: React.FC = () => {
       <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Upload OpenAPI Schema</DialogTitle>
+            <DialogTitle>Upload OpenAPI / Postman Schema</DialogTitle>
             <DialogDescription>
-              Upload a YAML or JSON file containing your OpenAPI 3.x specification.
+              Upload a YAML or JSON file containing your OpenAPI 3.x / Postman 2.x specification.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">

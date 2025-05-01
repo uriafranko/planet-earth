@@ -9,7 +9,7 @@ import { DocumentSearchResult } from '@/types/models';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import NoData from '@/components/NoData';
 import DocumentCard from '@/components/cards/DocumentCard';
-import SearchResultCard from '@/components/cards/SearchResultCard';
+import DocumentSearchResultCard from '@/components/cards/DocumentSearchResultCard';
 
 const DocumentSearch: React.FC = () => {
   const { toast } = useToast();
@@ -96,7 +96,7 @@ const DocumentSearch: React.FC = () => {
           ) : searchResults.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {searchResults.map((result) => (
-                <SearchResultCard key={result.chunk_id} result={result} />
+                <DocumentSearchResultCard key={result.chunk_id} result={result} />
               ))}
             </div>
           ) : (

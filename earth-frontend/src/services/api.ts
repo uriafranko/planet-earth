@@ -129,6 +129,9 @@ export const searchApi = {
 
 // Management API
 export const managementApi = {
+  getStatus: async (): Promise<ApiResponse<Stats>> => {
+    return fetchApi('/v1/management/stats');
+  },
   // Reindex vector store
   reindexVectorStore: async (schemaId?: string): Promise<ApiResponse<void>> => {
     const queryParams = new URLSearchParams();
@@ -148,7 +151,13 @@ export const managementApi = {
 };
 
 // Documents API
-import type { Document, DocumentDetail, DocumentSearchRequest, DocumentSearchResult } from '@/types/models';
+import type {
+  Document,
+  DocumentDetail,
+  DocumentSearchRequest,
+  DocumentSearchResult,
+  Stats,
+} from '@/types/models';
 
 export const documentsApi = {
   listDocuments: async (): Promise<ApiResponse<Document[]>> =>
@@ -167,10 +176,11 @@ export const documentsApi = {
   deleteDocument: async (documentId: string): Promise<ApiResponse<void>> =>
     fetchApi<void>(`/v1/documents/${documentId}`, 'DELETE'),
 
-  searchDocuments: async (query: DocumentSearchRequest): Promise<ApiResponse<DocumentSearchResult[]>> =>
+  searchDocuments: async (
+    query: DocumentSearchRequest
+  ): Promise<ApiResponse<DocumentSearchResult[]>> =>
     fetchApi<DocumentSearchResult[]>('/v1/search/documents/search', 'POST', query),
 };
-
 
 // Audit API
 export type AuditLogByDay = {

@@ -38,6 +38,8 @@ const Dashboard: React.FC = () => {
     schemaCount: 0,
     endpointCount: 0,
     searchCount: 0,
+    documentCount: 0,
+    chunkCount: 0,
   });
 
   const [activityData, setActivityData] = useState<
@@ -50,16 +52,7 @@ const Dashboard: React.FC = () => {
       setIsLoading(true);
       try {
         // Get schemas count
-        const schemasResponse = await schemasApi.getSchemas();
-        const schemaCount = schemasResponse.data?.length || 0;
-
-        // Get endpoints count for the first schema (if exists)
-        let endpointCount = 0;
-        if (schemasResponse.data && schemasResponse.data.length > 0) {
-          const endpointsResponse = await endpointsApi.getEndpoints(schemasResponse.data[0].id);
-          endpointCount = endpointsResponse.data?.length || 0;
-        }
-        let searchCount = 0;
+        const statsResponse = await managementApi.getStatus();
 
         // Fetch audit logs by day for activity charts
         const auditRes = await auditApi.getAuditLogsByDay();
@@ -77,11 +70,12 @@ const Dashboard: React.FC = () => {
             }))
           );
 
-          searchCount = auditRes.data.reduce((acc, item) => acc + item.count, 0);
           setStats({
-            schemaCount,
-            endpointCount,
-            searchCount, // Use the calculated searchCount
+            schemaCount: statsResponse.data.schemaCount,
+            endpointCount: statsResponse.data.endpointCount,
+            searchCount: statsResponse.data.searchCount, // Use the calculated searchCount
+            documentCount: statsResponse.data.documentCount,
+            chunkCount: statsResponse.data.chunksCount,
           });
         } else {
           setActivityData([]);
@@ -145,31 +139,57 @@ const Dashboard: React.FC = () => {
             <LoadingSpinner />
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <StatsCard
-              title="Total Schemas"
-              value={stats.schemaCount}
-              description="Uploaded OpenAPI schemas"
-              icon={<FileJson className="h-4 w-4" />}
-              variant="primary"
-            />
-            <StatsCard
-              title="API Endpoints"
-              value={stats.endpointCount}
-              description="Indexed API endpoints"
-              icon={<Database className="h-4 w-4" />}
-              // trend={{ value: 12, label: 'Increase from last month', direction: 'up' }}
-              variant="secondary"
-            />
-            <StatsCard
-              title="Search Queries"
-              value={stats.searchCount}
-              description="Total queries processed"
-              icon={<Search className="h-4 w-4" />}
-              // trend={{ value: 8, label: 'Increase from last month', direction: 'up' }}
-              variant="accent"
-            />
-          </div>
+          <>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <StatsCard
+                title="Total Schemas"
+                value={stats.schemaCount}
+                description="Uploaded OpenAPI schemas"
+                icon={<FileJson className="h-4 w-4" />}
+                variant="default"
+              />
+              <StatsCard
+                title="API Endpoints"
+                value={stats.endpointCount}
+                description="Indexed API endpoints"
+                icon={<Database className="h-4 w-4" />}
+                // trend={{ value: 12, label: 'Increase from last month', direction: 'up' }}
+                variant="primary"
+              />
+              <StatsCard
+                title="Search Queries"
+                value={stats.searchCount}
+                description="Total queries processed"
+                icon={<Search className="h-4 w-4" />}
+                // trend={{ value: 8, label: 'Increase from last month', direction: 'up' }}
+                variant="accent"
+              />
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <StatsCard
+                title="Total Documents"
+                value={stats.documentCount}
+                description="Uploaded Documents"
+                icon={<FileJson className="h-4 w-4" />}
+                variant="default"
+              />
+              <StatsCard
+                title="Document Chunks"
+                value={stats.chunkCount}
+                description="Indexed document chunks"
+                icon={<Database className="h-4 w-4" />}
+                variant="primary"
+              />
+              {/* <StatsCard
+                title="Search Queries"
+                value={stats.searchCount}
+                description="Total queries processed"
+                icon={<Search className="h-4 w-4" />}
+                // trend={{ value: 8, label: 'Increase from last month', direction: 'up' }}
+                variant="accent"
+              /> */}
+            </div>
+          </>
         )}
 
         <Tabs defaultValue="activity">

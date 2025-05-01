@@ -10,11 +10,11 @@ import {
 import ReactMarkdown from 'react-markdown';
 import type { DocumentSearchResult } from '@/types/models';
 
-interface SearchResultCardProps {
+interface DocumentSearchResultCardProps {
   result: DocumentSearchResult;
 }
 
-export const SearchResultCard: React.FC<SearchResultCardProps> = ({ result }) => {
+export const DocumentSearchResultCard: React.FC<DocumentSearchResultCardProps> = ({ result }) => {
   const [open, setOpen] = React.useState(false);
 
   return (
@@ -83,4 +83,4 @@ export const SearchResultCard: React.FC<SearchResultCardProps> = ({ result }) =>
   );
 };
 
-export default SearchResultCard;
+export default DocumentSearchResultCard;

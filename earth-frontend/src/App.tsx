@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import Schemas from './pages/Schemas';
 import Endpoints from './pages/Endpoints';
-import Search from './pages/Search';
+import Search from './pages/EndpointSearch';
 import Documents from './pages/Documents';
 import DocumentSearch from './pages/DocumentSearch';
 import NotFound from './pages/NotFound';

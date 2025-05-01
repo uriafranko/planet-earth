@@ -1,18 +1,46 @@
 import uuid
 from typing import Annotated
 
+from app.models.audit import Audit
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session, col, select
+from sqlmodel import Session, col, select, func
 
 from app.api.deps import TokenData, get_current_user, get_db
 from app.core.logging import get_logger
 from app.models.endpoint import Endpoint, EndpointRead
+from app.models.documents import Document, DocumentChunk
 from app.models.schema import Schema
 from app.tasks.endpoints import reindex_endpoint, reindex_schema_endpoints
 
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/management", tags=["management"])
+
+@router.get("/stats", summary="Get stats", description="Get stats about the number of endpoints and schemas.")
+async def get_stats(
+    db: Session = Depends(get_db),
+):
+    """Get stats about the number of endpoints and schemas."""
+    # Count the number of schemas
+    schema_count = db.exec(select(func.count(Schema.id))).one()
+
+    # Count the number of endpoints
+    endpoint_count = db.exec(select(func.count(Endpoint.id))).one()
+
+    search_count = db.exec(select(func.count(Audit.id))).one()
+
+    # Count the number of documents
+    document_count = db.exec(select(func.count(Document.id))).one()
+
+    chunks_count = db.exec(select(func.count(DocumentChunk.id))).one()
+
+    return {
+        "schemaCount": schema_count,
+        "endpointCount": endpoint_count,
+        "searchCount": search_count,
+        "documentCount": document_count,
+        "chunksCount": chunks_count,
+    }
 
 
 @router.get(

@@ -306,12 +306,16 @@ const Documents: React.FC = () => {
                 <Input
                   id="document-file"
                   type="file"
+                  accept=".txt,.pdf,.docx"
                   onChange={(e) => {
                     if (e.target.files && e.target.files[0]) {
                       setDocumentFile(e.target.files[0]);
                     }
                   }}
                 />
+                <p className="text-sm text-muted-foreground">
+                  Supported formats: .txt, .pdf, .docx
+                </p>
               </div>
             </div>
             <DialogFooter>

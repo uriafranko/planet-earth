@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Database, FileJson, Home, LogOut, Search, FileText } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Database, FileJson, Home, Search, FileText } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -15,8 +14,6 @@ import {
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
 import Logo from '../Logo';
-import UserAvatar from '../UserAvatar';
-import RoleIndicator from '../RoleIndicator';
 
 type UserRole = 'admin' | 'user' | 'viewer';
 
@@ -72,7 +69,7 @@ const AppSidebar: React.FC = () => {
 
   return (
     <Sidebar className="border-r">
-      <SidebarHeader className="flex justify-center py-6">
+      <SidebarHeader className="flex justify-center">
         <Logo size="lg" />
       </SidebarHeader>
 

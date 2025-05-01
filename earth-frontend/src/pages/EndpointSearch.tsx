@@ -8,7 +8,6 @@ import { searchApi } from '@/services/api';
 import { EndpointSearchResult, SearchQuery } from '@/types/models';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import NoData from '@/components/NoData';
-import SearchResultCard from '@/components/cards/SearchResultCard';
 import { useNavigate } from 'react-router-dom';
 import {
   Select,
@@ -19,6 +18,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import EndpointSearchResultCard from '@/components/cards/EndpointSearchResultCard';
 
 const Search: React.FC = () => {
   const { toast } = useToast();
@@ -149,7 +149,7 @@ const Search: React.FC = () => {
           ) : searchResults.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {searchResults.map((result) => (
-                <SearchResultCard
+                <EndpointSearchResultCard
                   key={result.id}
                   result={result}
                   onSelect={() => handleResultSelect(result)}

@@ -7,6 +7,14 @@ export interface User {
   role: 'admin' | 'user' | 'viewer';
 }
 
+export interface Stats {
+  schemaCount: number;
+  endpointCount: number;
+  searchCount: number;
+  documentCount: number;
+  chunksCount: number;
+}
+
 // OpenAPI schema related types
 export interface Schema {
   id: string;
