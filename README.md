@@ -32,6 +32,7 @@ Planet Earth is an open-source platform that bridges the gap between modern AI-p
 - [📋 Table of Contents](#-table-of-contents)
 - [🏗️ System Architecture](#️-system-architecture)
   - [Flow Diagram](#flow-diagram)
+  - [Services Map](#services-map)
 - [🔧 Installation](#-installation)
   - [Prerequisites](#prerequisites)
   - [Quick Start with Docker Compose](#quick-start-with-docker-compose)
@@ -56,16 +57,35 @@ Planet Earth follows a modern, microservices-based architecture:
 
 <img src="assets/diagram-flow.jpg" alt="Planet Earth Architecture" width="500">
 
+### Services Map
 
-The system works as follows:
+The diagram below shows the major services in Planet Earth and their primary communication paths. The backend (`earth-service`) exposes an MCP endpoint for low/normal traffic, while the dedicated `earth-mcp` service is used for high-scale MCP workloads. Both MCP endpoints can be connected to by AI IDEs. Only the most essential connections are shown for clarity.
 
-1. User deploys Planet Earth to their cluster
-2. User uploads internal OpenAPI / Postman schemas to their Planet Earth instance
-3. Planet Earth parses the schemas and breaks them into endpoints
-4. These endpoints are embedded and saved into a vector search database (PostgreSQL with pgvector)
-5. Planet Earth exposes an MCP server
-6. Users add this MCP to their AI-powered IDE
-7. The IDE can now discover and utilize internal APIs through the MCP
+```mermaid
+flowchart TD
+  FE[earth-frontend React]
+  BE[earth-service FastAPI]
+  CEL[Celery Worker]
+  REDIS[Redis]
+  PG[Postgres + pgvector]
+  MCP[earth-mcp Bun, high-scale MCP]
+  IDE[AI IDE]
+
+  FE --> BE
+  BE ---> PG
+  BE --> REDIS
+  CEL ---> PG
+  REDIS --> CEL
+
+  BE <-.-> IDE
+  MCP <-.-> IDE
+  MCP <---> PG
+```
+
+**Key points:**
+- The backend (`earth-service`) exposes an MCP endpoint for low/normal traffic, and also handles core API and Celery orchestration.
+- The dedicated `earth-mcp` service is used for high-scale MCP workloads and only interacts with the vector database (pgvector in Postgres) and AI IDEs.
+- Both MCP endpoints can be added to your AI IDE for internal API discovery and usage.
 
 ## 🔧 Installation
 
